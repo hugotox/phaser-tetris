@@ -1,22 +1,18 @@
+/* eslint-disable indent */
 import { Scene } from 'phaser';
-import {
-  BLOCK_DEFS,
-  BlockFrameType,
-  BlockRotationType,
-  BlockType,
-  UNIT,
-} from '../constants';
+import { BlockTypes, TETROMINOES, UNIT } from '../constants';
 
 export class MainGame extends Scene {
   cursors: Phaser.Types.Input.Keyboard.CursorKeys | undefined;
   canRotate: boolean = true;
   canMove: boolean = true;
   grid = Array.from({ length: 20 }, () => Array(10).fill(0));
-  currentBlockType: BlockType = 'I';
-  currentBlockRotation: BlockRotationType = 1;
-  activeBlock: Phaser.GameObjects.Sprite | undefined;
-  activeBlockX = 0;
-  activeBlockY = 0;
+  playerSprite: Phaser.GameObjects.Sprite | undefined;
+  playerRow = 0;
+  playerCol = 0;
+  playerRotation: 1 | 2 | 3 | 4 = 1;
+  playerType: BlockTypes = 'I';
+  playerMatrix = TETROMINOES[this.playerType];
 
   constructor() {
     super('Game');
@@ -35,126 +31,164 @@ export class MainGame extends Scene {
     this.renderBlock();
   }
 
-  removeBlockFromGrid() {
-    const blockFrame: BlockFrameType = `${this.currentBlockType}-${this.currentBlockRotation}`;
-    const blockDefinition = BLOCK_DEFS[blockFrame];
-
-    // reset block spots on the grid
-    for (let row = 0; row < blockDefinition.length; row++) {
-      for (let col = 0; col < blockDefinition[row].length; col++) {
-        this.grid[this.activeBlockY + row][this.activeBlockX + col] = 0;
+  rotate(player: number[][], dir: 'right' | 'left' = 'right') {
+    const matrix = JSON.parse(JSON.stringify(player));
+    for (let y = 0; y < matrix.length; ++y) {
+      for (let x = 0; x < y; ++x) {
+        [matrix[x][y], matrix[y][x]] = [matrix[y][x], matrix[x][y]];
       }
     }
+    if (dir === 'right') {
+      matrix.forEach((row) => row.reverse());
+    } else {
+      matrix.reverse();
+    }
+    return matrix;
   }
 
-  addBlockToGrid() {
-    const blockFrame: BlockFrameType = `${this.currentBlockType}-${this.currentBlockRotation}`;
-    const blockDefinition = BLOCK_DEFS[blockFrame];
-
-    // update grid with the block definition
-    for (let row = 0; row < blockDefinition.length; row++) {
-      for (let col = 0; col < blockDefinition[row].length; col++) {
-        this.grid[this.activeBlockY + row][this.activeBlockX + col] =
-          blockDefinition[row][col];
+  checkCollision() {
+    for (let x = 0; x < this.playerMatrix.length; x++) {
+      for (let y = 0; y < this.playerMatrix[x].length; y++) {
+        if (this.playerMatrix[x][y] !== 0) {
+          if (
+            typeof this.grid[this.playerRow + x]?.[this.playerCol + y] ===
+              'undefined' ||
+            this.grid[this.playerRow + x]?.[this.playerCol + y] !== 0
+          )
+            return true;
+        }
       }
     }
+    return false;
   }
 
-  renderBlock({
-    moveLeft = false,
-    moveRight = false,
-    rotate = false,
-  }: {
-    moveLeft?: boolean;
-    moveRight?: boolean;
-    rotate?: boolean;
-  } = {}) {
-    this.removeBlockFromGrid();
-
-    let blockFrame: BlockFrameType = `${this.currentBlockType}-${this.currentBlockRotation}`;
-
-    if (rotate) {
-      if (this.currentBlockRotation < 4) {
-        this.currentBlockRotation++;
-      } else {
-        this.currentBlockRotation = 1;
-      }
-
-      blockFrame =
-        `${this.currentBlockType}-${this.currentBlockRotation}` as BlockFrameType;
+  renderBlockSprite() {
+    const sprite = `${this.playerType}-${this.playerRotation}`;
+    let newX = this.playerCol;
+    let newY = this.playerRow;
+    switch (this.playerType) {
+      case 'I':
+        if (this.playerRotation === 1) {
+          newY += 1;
+        } else if (this.playerRotation === 2) {
+          newX += 2;
+        } else if (this.playerRotation === 3) {
+          newY += 2;
+        } else if (this.playerRotation === 4) {
+          newX += 1;
+        }
+        break;
+      case 'T':
+        if (this.playerRotation === 2) {
+          newX += 1;
+        } else if (this.playerRotation === 3) {
+          newY += 1;
+        }
+        break;
     }
-
-    if (moveLeft) {
-      this.activeBlockX -= 1;
-    }
-    if (moveRight) {
-      this.activeBlockX += 1;
-    }
-
-    let offsetX = 0;
-    let offsetY = 0;
-    // one off offset for the I block
-    if (this.currentBlockType === 'I') {
-      if (this.currentBlockRotation === 1 || this.currentBlockRotation === 3) {
-        offsetX = UNIT;
-      } else {
-        offsetY = UNIT;
-      }
-    }
-
-    const newX = this.activeBlockX * UNIT + offsetX;
-    const newY = this.activeBlockY * UNIT + offsetY;
-
-    if (!this.activeBlock) {
-      this.activeBlock = this.add
-        .sprite(newX, newY, 'tetrominos', blockFrame)
+    if (!this.playerSprite) {
+      this.playerSprite = this.add
+        .sprite(newX * UNIT, newY * UNIT, 'tetrominos', sprite)
         .setOrigin(0, 0);
     } else {
-      this.activeBlock.setFrame(blockFrame);
-      this.activeBlock.setX(newX);
-      this.activeBlock.setY(newY);
+      this.playerSprite.setFrame(sprite);
+      this.playerSprite.setX(newX * UNIT);
+      this.playerSprite.setY(newY * UNIT);
+    }
+  }
+
+  renderBlock(move?: 'right' | 'left' | 'down' | 'rotate') {
+    switch (move) {
+      case 'right':
+        this.playerCol += 1;
+        if (this.checkCollision()) {
+          this.playerCol -= 1;
+        }
+        break;
+      case 'left':
+        this.playerCol -= 1;
+        if (this.checkCollision()) {
+          this.playerCol += 1;
+        }
+        break;
+      case 'down':
+        this.playerRow += 1;
+        if (this.checkCollision()) {
+          this.playerRow -= 1;
+        }
+        break;
+      case 'rotate':
+        this.playerMatrix = this.rotate(this.playerMatrix);
+        if (this.playerRotation < 4) {
+          this.playerRotation += 1;
+        } else {
+          this.playerRotation = 1;
+        }
+        if (this.checkCollision()) {
+          this.playerMatrix = this.rotate(this.playerMatrix, 'left');
+          if (this.playerRotation === 1) {
+            this.playerRotation = 4;
+          } else {
+            this.playerRotation -= 1;
+          }
+        }
     }
 
-    this.addBlockToGrid();
+    this.renderBlockSprite();
 
-    this.consoleLogGrid();
+    // this.consoleLogGrid();
   }
 
   update() {
     if (this.cursors.up.isDown && this.canRotate) {
       this.canRotate = false;
-      this.renderBlock({ rotate: true });
+      this.renderBlock('rotate');
     }
     if (this.cursors.up.isUp && !this.canRotate) {
       this.canRotate = true;
     }
     if (this.cursors.left.isDown && this.canMove) {
       this.canMove = false;
-      this.renderBlock({ moveLeft: true });
+      this.renderBlock('left');
     }
     if (this.cursors.right.isDown && this.canMove) {
       this.canMove = false;
-      this.renderBlock({ moveRight: true });
+      this.renderBlock('right');
     }
-    if (this.cursors.left.isUp && this.cursors?.right.isUp && !this.canMove) {
+    if (this.cursors.down.isDown && this.canMove) {
+      this.canMove = false;
+      this.renderBlock('down');
+    }
+    if (
+      this.cursors.left.isUp &&
+      this.cursors?.right.isUp &&
+      this.cursors?.down.isUp &&
+      !this.canMove
+    ) {
       this.canMove = true;
     }
   }
 
   consoleLogGrid() {
     console.clear();
+    console.log({
+      X: this.playerRow,
+      Y: this.playerCol,
+      R: this.playerRotation,
+    });
     let gridString = '';
     for (let row = 0; row < this.grid.length; row++) {
       if (row === 0) {
         gridString += '    ';
         for (let col = 0; col < this.grid[row].length; col++) {
-          gridString += String(col) + '  ';
+          gridString += String(col) + '   ';
         }
         gridString += '\n';
       }
       gridString += `${String(row).padStart(2, ' ')}: `;
       for (let col = 0; col < this.grid[row].length; col++) {
-        gridString += String(this.grid[row][col] ? '1' : '.') + '  ';
+        gridString +=
+          String(this.grid[row][col] ? this.grid[row][col] : '.') + '   ';
       }
       gridString += '\n';
     }

@@ -280,12 +280,12 @@
         } else {
           // First piece
           const pieceType = Math.floor(Math.random() * 7) + 1;
-          player.matrix = SHAPES[pieceType];
+          player.matrix = JSON.parse(JSON.stringify(SHAPES[pieceType]));
         }
 
         // Generate the next piece
         const nextPieceType = Math.floor(Math.random() * 7) + 1;
-        player.next = SHAPES[nextPieceType];
+        player.next = JSON.parse(JSON.stringify(SHAPES[nextPieceType]));
 
         // Reset position
         player.pos.y = 0;
@@ -304,11 +304,18 @@
 
       function rotate(matrix) {
         const N = matrix.length;
-        const result = Array.from(Array(N), () => Array(N).fill(0));
+        const result = [];
+
+        for (let i = 0; i < N; i++) {
+          result.push([]);
+          for (let j = 0; j < matrix[i].length; j++) {
+            result[i].push(0);
+          }
+        }
 
         // Transpose
         for (let i = 0; i < N; i++) {
-          for (let j = 0; j < N; j++) {
+          for (let j = 0; j < matrix[i].length; j++) {
             result[j][i] = matrix[i][j];
           }
         }
@@ -322,21 +329,37 @@
       }
 
       function playerRotate() {
-        const originalPos = player.pos.x;
-        let offset = 1;
+        const originalMatrix = JSON.parse(JSON.stringify(player.matrix));
+        const originalPos = { ...player.pos };
+
         const rotated = rotate(player.matrix);
         player.matrix = rotated;
 
-        // Handle collision after rotation
-        while (checkCollision()) {
-          player.pos.x += offset;
-          offset = -(offset + (offset > 0 ? 1 : -1));
+        // Try different offsets to see if rotation is possible
+        let offset = 0;
+        const maxOffsetCheck = Math.ceil(player.matrix.length / 2);
 
-          // If offset is too large, rotation isn't possible
-          if (offset > player.matrix[0].length) {
-            player.matrix = SHAPES[player.matrix[0][0]]; // Revert to original shape
-            player.pos.x = originalPos;
-            return;
+        // Check if rotation is valid
+        while (checkCollision()) {
+          // Try to move right
+          offset++;
+          player.pos.x += 1;
+
+          // If moving right doesn't work, try moving left
+          if (offset > maxOffsetCheck || checkCollision()) {
+            player.pos.x = originalPos.x - offset;
+
+            // If moving left doesn't work either, try moving up
+            if (offset > maxOffsetCheck || checkCollision()) {
+              player.pos.y -= 1;
+
+              // If nothing works, revert to original position and matrix
+              if (checkCollision()) {
+                player.matrix = originalMatrix;
+                player.pos = { ...originalPos };
+                return;
+              }
+            }
           }
         }
       }
@@ -376,13 +399,21 @@
 
         for (let y = 0; y < matrix.length; y++) {
           for (let x = 0; x < matrix[y].length; x++) {
-            if (
-              matrix[y][x] !== 0 &&
-              (grid[y + pos.y] === undefined ||
-                grid[y + pos.y][x + pos.x] === undefined ||
-                grid[y + pos.y][x + pos.x] !== 0)
-            ) {
-              return true;
+            // Only check cells that have a block
+            if (matrix[y][x] !== 0) {
+              const gridY = y + pos.y;
+              const gridX = x + pos.x;
+
+              // Check if out of bounds or collides with existing blocks
+              if (
+                gridY < 0 ||
+                gridY >= ROWS ||
+                gridX < 0 ||
+                gridX >= COLS ||
+                (gridY >= 0 && gridX >= 0 && grid[gridY][gridX] !== 0)
+              ) {
+                return true;
+              }
             }
           }
         }
@@ -394,7 +425,13 @@
         player.matrix.forEach((row, y) => {
           row.forEach((value, x) => {
             if (value !== 0) {
-              grid[y + player.pos.y][x + player.pos.x] = value;
+              const gridY = y + player.pos.y;
+              const gridX = x + player.pos.x;
+
+              // Make sure we're inside the grid before merging
+              if (gridY >= 0 && gridY < ROWS && gridX >= 0 && gridX < COLS) {
+                grid[gridY][gridX] = value;
+              }
             }
           });
         });
