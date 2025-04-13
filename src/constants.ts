@@ -42,4 +42,6 @@ export const TETROMINOES = {
   ],
 };
 
-export type BlockTypes = 'I' | 'J' | 'L' | 'O' | 'S' | 'T' | 'Z';
+export const BlockTypes = Object.keys(TETROMINOES);
+
+export type BlockTypesType = keyof typeof TETROMINOES;
