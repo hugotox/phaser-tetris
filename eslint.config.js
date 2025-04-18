@@ -17,7 +17,7 @@ export default [
   {
     rules: {
       semi: ["error", "always"],
-      indent: ["error", 2],
+      indent: "off",
       "@typescript-eslint/no-unused-vars": 2,
     },
   },
