@@ -18,12 +18,14 @@ export class MainGame extends Scene {
   canMove: boolean = true;
   grid = Array.from({ length: 20 }, () => Array(10).fill(0));
   playerSprite: Phaser.GameObjects.Sprite | null = null;
-  playerRow = -1;
-  playerCol = 3;
+  playerRow = 0;
+  playerCol = 0;
   playerRotation: 1 | 2 | 3 | 4 = 1;
   playerType: BlockTypesType | null = null;
   playerMatrix: number[][] | null = null;
   rectangles: Phaser.GameObjects.Rectangle[] = [];
+  gridBlocks: Phaser.GameObjects.Sprite[] = [];
+  clearLinesAnimPause = false;
 
   constructor() {
     super("Game");
@@ -40,8 +42,8 @@ export class MainGame extends Scene {
 
     this.lastUpdateTime = 0;
     this.cursors = this.input.keyboard?.createCursorKeys();
+    this.renderGridBlocks();
     this.newBlock();
-    this.renderBlock();
   }
 
   rotate(player: number[][], dir: "right" | "left" = "right") {
@@ -82,8 +84,6 @@ export class MainGame extends Scene {
         }
       }
     }
-    this.playerSprite?.destroy();
-    this.playerSprite = null;
   }
 
   checkCompletedLines() {
@@ -101,23 +101,30 @@ export class MainGame extends Scene {
         deleteRowIndices.push(i);
       }
     }
-    deleteRowIndices.forEach((row) => {
-      this.grid.splice(row, 1);
-      this.grid.unshift(Array(COLUMNS).fill(0));
-    });
 
-    // this.grid.length = ROWS;
-    console.log({ lines });
+    if (lines) {
+      this.clearLinesAnimPause = true;
+    }
+
+    setTimeout(() => {
+      deleteRowIndices.forEach((row) => {
+        this.grid.splice(row, 1);
+        this.grid.unshift(Array(COLUMNS).fill(0));
+      });
+      this.playerSprite?.destroy();
+      this.playerSprite = null;
+      this.newBlock();
+      this.renderGridBlocks();
+      this.clearLinesAnimPause = false;
+    }, 300);
   }
 
   newBlock() {
     const typeCount = BlockTypes.length;
     const newBlockIdx = Math.floor(Math.random() * typeCount);
-    // this.playerSprite.destroy();
-    // this.playerSprite = null;
     this.playerRotation = 1;
     this.playerType = BlockTypes[newBlockIdx] as BlockTypesType;
-    this.playerRow = -1;
+    this.playerRow = this.playerType === "I" ? -2 : -1;
     this.playerCol = 3;
     this.playerMatrix = TETROMINOES[this.playerType];
   }
@@ -208,16 +215,17 @@ export class MainGame extends Scene {
     }
 
     this.renderBlockSprite();
-    this.consoleLogGrid();
+    // this.consoleLogGrid();
     return collision;
   }
 
   renderGridBlocks() {
     this.rectangles.forEach((rectangle) => rectangle.destroy());
+    this.gridBlocks.forEach((block) => block.destroy());
+
     for (let row = 0; row < this.grid.length; row++) {
       for (let col = 0; col < this.grid[row].length; col++) {
         if (this.grid[row][col] !== 0) {
-          // const sprite = `${BlockTypes[this.grid[row][col] - 1]}-1`;
           const rectangle = this.add
             .rectangle(
               col * UNIT * BLOCK_SCALE,
@@ -234,14 +242,15 @@ export class MainGame extends Scene {
   }
 
   update(time: number) {
+    if (this.clearLinesAnimPause) {
+      return;
+    }
     if (time > this.lastUpdateTime + this.gameSpeed) {
       this.lastUpdateTime = time;
       const collision = this.renderBlock("down");
       if (collision) {
         this.addBlockToGrid();
         this.checkCompletedLines();
-        this.newBlock();
-        this.renderGridBlocks();
       }
     }
     if (this.cursors.up.isDown && this.canRotate) {
@@ -265,8 +274,8 @@ export class MainGame extends Scene {
     }
     if (
       this.cursors.left.isUp &&
-      this.cursors?.right.isUp &&
-      this.cursors?.down.isUp &&
+      this.cursors.right.isUp &&
+      this.cursors.down.isUp &&
       !this.canMove
     ) {
       this.canMove = true;
