@@ -34,6 +34,7 @@ export class MainGame extends Scene {
   rectangles: Phaser.GameObjects.Rectangle[] = [];
   gridBlocks: Phaser.GameObjects.Sprite[] = [];
   clearLinesAnimPause = false;
+  showGridLines = true;
 
   constructor() {
     super("Game");
@@ -47,6 +48,17 @@ export class MainGame extends Scene {
     this.add
       .rectangle(0, 0, 10 * UNIT * BLOCK_SCALE, 20 * UNIT * BLOCK_SCALE, 0x000000)
       .setOrigin(0, 0);
+
+    if (this.showGridLines) {
+      for (let i = 1; i < COLUMNS; i++) {
+        const x = UNIT * BLOCK_SCALE * i;
+        this.add.line(0, 0, x, 0, x, UNIT * BLOCK_SCALE * 20, 0x222222).setOrigin(0, 0);
+      }
+      for (let i = 1; i < ROWS; i++) {
+        const y = UNIT * BLOCK_SCALE * i;
+        this.add.line(0, 0, 0, y, UNIT * BLOCK_SCALE * 10, y, 0x222222).setOrigin(0, 0);
+      }
+    }
 
     this.lastUpdateTime = 0;
     this.cursors = this.input.keyboard?.createCursorKeys();
@@ -180,46 +192,42 @@ export class MainGame extends Scene {
 
   renderBlock(move?: "right" | "left" | "down" | "rotate") {
     let collision = false;
-    switch (move) {
-      case "right":
-        this.playerCol += 1;
-        if (this.checkCollision()) {
-          collision = true;
-          this.playerCol -= 1;
-        }
-        break;
-      case "left":
+    if (move === "right") {
+      this.playerCol += 1;
+      if (this.checkCollision()) {
+        collision = true;
         this.playerCol -= 1;
-        if (this.checkCollision()) {
-          collision = true;
-          this.playerCol += 1;
-        }
-        break;
-      case "down":
-        this.playerRow += 1;
-        if (this.checkCollision()) {
-          collision = true;
-          this.playerRow -= 1;
-        }
-        break;
-      case "rotate":
-        this.playerMatrix = this.rotate(this.playerMatrix);
-        if (this.playerRotation < 4) {
-          this.playerRotation += 1;
+      }
+    } else if (move === "left") {
+      this.playerCol -= 1;
+      if (this.checkCollision()) {
+        collision = true;
+        this.playerCol += 1;
+      }
+    } else if (move === "down") {
+      this.playerRow += 1;
+      if (this.checkCollision()) {
+        collision = true;
+        this.playerRow -= 1;
+      }
+    } else if (move === "rotate") {
+      this.playerMatrix = this.rotate(this.playerMatrix);
+      if (this.playerRotation < 4) {
+        this.playerRotation += 1;
+      } else {
+        this.playerRotation = 1;
+      }
+      if (this.checkCollision()) {
+        collision = true;
+        this.playerMatrix = this.rotate(this.playerMatrix, "left");
+        if (this.playerRotation === 1) {
+          this.playerRotation = 4;
         } else {
-          this.playerRotation = 1;
+          this.playerRotation -= 1;
         }
-        if (this.checkCollision()) {
-          collision = true;
-          this.playerMatrix = this.rotate(this.playerMatrix, "left");
-          if (this.playerRotation === 1) {
-            this.playerRotation = 4;
-          } else {
-            this.playerRotation -= 1;
-          }
-        } else {
-          // rotate sprite animation
-        }
+      } else {
+        // rotate sprite animation
+      }
     }
 
     this.renderBlockSprite();
@@ -240,7 +248,7 @@ export class MainGame extends Scene {
               row * UNIT * BLOCK_SCALE,
               UNIT * BLOCK_SCALE,
               UNIT * BLOCK_SCALE,
-              0xff0000,
+              0x333333,
             )
             .setOrigin(0, 0);
           this.rectangles.push(rectangle);
