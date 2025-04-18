@@ -1,4 +1,3 @@
-/* eslint-disable indent */
 import { Scene } from "phaser";
 import {
   BLOCK_SCALE,
@@ -13,9 +12,18 @@ import {
 export class MainGame extends Scene {
   lastUpdateTime = 0;
   gameSpeed = 1000;
+  softDropSpeed = 20;
+  downKeyPressTime = 0;
+  softDropping = false;
+  softDropDelay = 200;
+  das = 150; // Delay before auto-repeat starts (ms)
+  arr = 30; // Auto-repeat rate (ms)
+  moveDirection = null; // 'left' or 'right'
+  keyPressTime = 0;
+  lastMoveTime = 0;
+
   cursors: Phaser.Types.Input.Keyboard.CursorKeys | undefined;
   canRotate: boolean = true;
-  canMove: boolean = true;
   grid = Array.from({ length: 20 }, () => Array(10).fill(0));
   playerSprite: Phaser.GameObjects.Sprite | null = null;
   playerRow = 0;
@@ -245,7 +253,55 @@ export class MainGame extends Scene {
     if (this.clearLinesAnimPause) {
       return;
     }
-    if (time > this.lastUpdateTime + this.gameSpeed) {
+
+    const downKey = this.cursors.down;
+    const leftPressed = this.cursors.left.isDown;
+    const rightPressed = this.cursors.right.isDown;
+
+    if (leftPressed || rightPressed) {
+      const dir = leftPressed ? "left" : "right";
+
+      if (this.moveDirection !== dir) {
+        // New key press or switched direction
+        this.moveDirection = dir;
+        this.keyPressTime = time;
+        this.lastMoveTime = time;
+        this.renderBlock(dir); // Move once immediately
+      } else {
+        const heldTime = time - this.keyPressTime;
+        const timeSinceLastMove = time - this.lastMoveTime;
+
+        if (heldTime >= this.das && timeSinceLastMove >= this.arr) {
+          this.lastMoveTime = time;
+          this.renderBlock(dir); // Auto-repeat
+        }
+      }
+    } else {
+      // No horizontal key held
+      this.moveDirection = null;
+      this.keyPressTime = 0;
+      this.lastMoveTime = 0;
+    }
+
+    if (downKey.isDown) {
+      if (this.downKeyPressTime === 0) {
+        // First press
+        this.downKeyPressTime = time;
+        this.softDropping = false; // Single drop
+        this.renderBlock("down"); // Immediate single drop
+        this.lastUpdateTime = time; // Reset timer so we don’t double drop
+      } else if (time - this.downKeyPressTime > this.softDropDelay) {
+        this.softDropping = true; // Begin fast drop after delay
+      }
+    } else {
+      // Key released
+      this.downKeyPressTime = 0;
+      this.softDropping = false;
+    }
+
+    const currentSpeed = this.softDropping ? this.softDropSpeed : this.gameSpeed;
+
+    if (time > this.lastUpdateTime + currentSpeed) {
       this.lastUpdateTime = time;
       const collision = this.renderBlock("down");
       if (collision) {
@@ -259,26 +315,6 @@ export class MainGame extends Scene {
     }
     if (this.cursors.up.isUp && !this.canRotate) {
       this.canRotate = true;
-    }
-    if (this.cursors.left.isDown && this.canMove) {
-      this.canMove = false;
-      this.renderBlock("left");
-    }
-    if (this.cursors.right.isDown && this.canMove) {
-      this.canMove = false;
-      this.renderBlock("right");
-    }
-    if (this.cursors.down.isDown && this.canMove) {
-      this.canMove = false;
-      this.renderBlock("down");
-    }
-    if (
-      this.cursors.left.isUp &&
-      this.cursors.right.isUp &&
-      this.cursors.down.isUp &&
-      !this.canMove
-    ) {
-      this.canMove = true;
     }
   }
 
