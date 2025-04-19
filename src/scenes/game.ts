@@ -4,6 +4,8 @@ import {
   BlockTypes,
   BlockTypesType,
   COLUMNS,
+  RotationDirection,
+  RotationType,
   ROWS,
   TETROMINOES,
   UNIT,
@@ -23,12 +25,13 @@ export class MainGame extends Scene {
   lastMoveTime = 0;
 
   cursors: Phaser.Types.Input.Keyboard.CursorKeys | undefined;
+  zKey: Phaser.Input.Keyboard.Key | undefined;
   canRotate: boolean = true;
   grid = Array.from({ length: 20 }, () => Array(10).fill(0));
   playerSprite: Phaser.GameObjects.Sprite | null = null;
   playerRow = 0;
   playerCol = 0;
-  playerRotation: 1 | 2 | 3 | 4 = 1;
+  playerRotation: RotationType = "0";
   playerType: BlockTypesType | null = null;
   playerMatrix: number[][] | null = null;
   rectangles: Phaser.GameObjects.Rectangle[] = [];
@@ -62,11 +65,12 @@ export class MainGame extends Scene {
 
     this.lastUpdateTime = 0;
     this.cursors = this.input.keyboard?.createCursorKeys();
+    this.zKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
     // this.renderGridBlocks();
     this.newBlock();
   }
 
-  rotate(player: number[][] | null, dir: "right" | "left" = "right") {
+  rotate(player: number[][] | null, dir: RotationDirection) {
     if (!player) {
       return null;
     }
@@ -76,7 +80,7 @@ export class MainGame extends Scene {
         [matrix[x][y], matrix[y][x]] = [matrix[y][x], matrix[x][y]];
       }
     }
-    if (dir === "right") {
+    if (dir === "CW") {
       matrix.forEach((row) => row.reverse());
     } else {
       matrix.reverse();
@@ -163,7 +167,7 @@ export class MainGame extends Scene {
   newBlock() {
     const typeCount = BlockTypes.length;
     const newBlockIdx = Math.floor(Math.random() * typeCount);
-    this.playerRotation = 1;
+    this.playerRotation = "0";
     this.playerType = BlockTypes[newBlockIdx] as BlockTypesType;
     this.playerRow = this.playerType === "I" ? -2 : -1;
     this.playerCol = 3;
@@ -176,13 +180,13 @@ export class MainGame extends Scene {
     let newY = this.playerRow;
 
     if (this.playerType === "I") {
-      if (this.playerRotation === 1) {
+      if (this.playerRotation === "0") {
         newY += 1;
-      } else if (this.playerRotation === 2) {
+      } else if (this.playerRotation === "R") {
         newX += 2;
-      } else if (this.playerRotation === 3) {
+      } else if (this.playerRotation === "2") {
         newY += 2;
-      } else if (this.playerRotation === 4) {
+      } else if (this.playerRotation === "L") {
         newX += 1;
       }
     } else if (
@@ -192,9 +196,9 @@ export class MainGame extends Scene {
       this.playerType === "S" ||
       this.playerType === "Z"
     ) {
-      if (this.playerRotation === 2) {
+      if (this.playerRotation === "R") {
         newX += 1;
-      } else if (this.playerRotation === 3) {
+      } else if (this.playerRotation === "2") {
         newY += 1;
       }
     }
@@ -211,7 +215,32 @@ export class MainGame extends Scene {
     }
   }
 
-  renderPlayer(move?: "right" | "left" | "down" | "rotate") {
+  getNextRotation(rotation: RotationType, dir: RotationDirection): RotationType {
+    if (dir === "CW") {
+      if (rotation === "0") {
+        return "R" as RotationType;
+      } else if (rotation === "R") {
+        return "2" as RotationType;
+      } else if (rotation === "2") {
+        return "L" as RotationType;
+      } else if (rotation === "L") {
+        return "0" as RotationType;
+      }
+    } else {
+      if (rotation === "0") {
+        return "L" as RotationType;
+      } else if (rotation === "L") {
+        return "2" as RotationType;
+      } else if (rotation === "2") {
+        return "R" as RotationType;
+      } else if (rotation === "R") {
+        return "0" as RotationType;
+      }
+    }
+    return rotation;
+  }
+
+  renderPlayer(move: "right" | "left" | "down" | "rotate", rotationDir: RotationDirection = "CW") {
     let collision = false;
     if (move === "right") {
       this.playerCol += 1;
@@ -232,19 +261,16 @@ export class MainGame extends Scene {
         this.playerRow -= 1;
       }
     } else if (move === "rotate") {
-      this.playerMatrix = this.rotate(this.playerMatrix);
-      if (this.playerRotation < 4) {
-        this.playerRotation += 1;
-      } else {
-        this.playerRotation = 1;
-      }
+      this.playerMatrix = this.rotate(this.playerMatrix, rotationDir);
+      this.playerRotation = this.getNextRotation(this.playerRotation, rotationDir);
       if (this.checkCollision()) {
         collision = true;
-        this.playerMatrix = this.rotate(this.playerMatrix, "left");
-        if (this.playerRotation === 1) {
-          this.playerRotation = 4;
+        // rollback rotation:
+        this.playerMatrix = this.rotate(this.playerMatrix, rotationDir === "CW" ? "CCW" : "CW");
+        if (rotationDir === "CW") {
+          this.playerRotation = this.getNextRotation(this.playerRotation, "CCW");
         } else {
-          this.playerRotation -= 1;
+          this.playerRotation = this.getNextRotation(this.playerRotation, "CW");
         }
       } else {
         // rotate sprite animation
@@ -344,9 +370,15 @@ export class MainGame extends Scene {
   handleRotationalMove() {
     if (this.cursors?.up.isDown && this.canRotate) {
       this.canRotate = false;
-      this.renderPlayer("rotate");
+      this.renderPlayer("rotate", "CW");
     }
-    if (this.cursors?.up.isUp && !this.canRotate) {
+
+    if (this.zKey?.isDown && this.canRotate) {
+      this.canRotate = false;
+      this.renderPlayer("rotate", "CCW");
+    }
+
+    if (this.cursors?.up.isUp && this.zKey?.isUp && !this.canRotate) {
       this.canRotate = true;
     }
   }
