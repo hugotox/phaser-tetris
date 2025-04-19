@@ -12,13 +12,13 @@ import {
 export class MainGame extends Scene {
   lastUpdateTime = 0;
   gameSpeed = 1000;
-  softDropSpeed = 20;
+  softDropSpeed = 10;
   downKeyPressTime = 0;
   softDropping = false;
   softDropDelay = 200;
   das = 150; // Delay before auto-repeat starts (ms)
   arr = 30; // Auto-repeat rate (ms)
-  moveDirection = null; // 'left' or 'right'
+  moveDirection: "left" | "right" | null = null; // 'left' or 'right'
   keyPressTime = 0;
   lastMoveTime = 0;
 
@@ -32,7 +32,6 @@ export class MainGame extends Scene {
   playerType: BlockTypesType | null = null;
   playerMatrix: number[][] | null = null;
   rectangles: Phaser.GameObjects.Rectangle[] = [];
-  gridBlocks: Phaser.GameObjects.Sprite[] = [];
   clearLinesAnimPause = false;
   showGridLines = true;
 
@@ -66,8 +65,11 @@ export class MainGame extends Scene {
     this.newBlock();
   }
 
-  rotate(player: number[][], dir: "right" | "left" = "right") {
-    const matrix = JSON.parse(JSON.stringify(player));
+  rotate(player: number[][] | null, dir: "right" | "left" = "right") {
+    if (!player) {
+      return null;
+    }
+    const matrix: number[][] = JSON.parse(JSON.stringify(player));
     for (let y = 0; y < matrix.length; ++y) {
       for (let x = 0; x < y; ++x) {
         [matrix[x][y], matrix[y][x]] = [matrix[y][x], matrix[x][y]];
@@ -82,6 +84,9 @@ export class MainGame extends Scene {
   }
 
   checkCollision() {
+    if (!this.playerMatrix) {
+      return false;
+    }
     for (let x = 0; x < this.playerMatrix.length; x++) {
       for (let y = 0; y < this.playerMatrix[x].length; y++) {
         if (this.playerMatrix[x][y] !== 0) {
@@ -97,6 +102,9 @@ export class MainGame extends Scene {
   }
 
   addBlockToGrid() {
+    if (!this.playerMatrix) {
+      return;
+    }
     for (let x = 0; x < this.playerMatrix.length; x++) {
       for (let y = 0; y < this.playerMatrix[x].length; y++) {
         if (this.playerMatrix[x][y] !== 0) {
@@ -140,6 +148,7 @@ export class MainGame extends Scene {
   }
 
   newBlock() {
+    console.log("new block");
     const typeCount = BlockTypes.length;
     const newBlockIdx = Math.floor(Math.random() * typeCount);
     this.playerRotation = 1;
@@ -149,7 +158,7 @@ export class MainGame extends Scene {
     this.playerMatrix = TETROMINOES[this.playerType];
   }
 
-  renderBlockSprite() {
+  renderPlayerSprite() {
     const sprite = `${this.playerType}-${this.playerRotation}`;
     let newX = this.playerCol;
     let newY = this.playerRow;
@@ -190,7 +199,7 @@ export class MainGame extends Scene {
     }
   }
 
-  renderBlock(move?: "right" | "left" | "down" | "rotate") {
+  renderPlayer(move?: "right" | "left" | "down" | "rotate") {
     let collision = false;
     if (move === "right") {
       this.playerCol += 1;
@@ -230,14 +239,13 @@ export class MainGame extends Scene {
       }
     }
 
-    this.renderBlockSprite();
+    this.renderPlayerSprite();
     // this.consoleLogGrid();
     return collision;
   }
 
   renderGridBlocks() {
     this.rectangles.forEach((rectangle) => rectangle.destroy());
-    this.gridBlocks.forEach((block) => block.destroy());
 
     for (let row = 0; row < this.grid.length; row++) {
       for (let col = 0; col < this.grid[row].length; col++) {
@@ -257,14 +265,9 @@ export class MainGame extends Scene {
     }
   }
 
-  update(time: number) {
-    if (this.clearLinesAnimPause) {
-      return;
-    }
-
-    const downKey = this.cursors.down;
-    const leftPressed = this.cursors.left.isDown;
-    const rightPressed = this.cursors.right.isDown;
+  handleHorizontalMove(time: number) {
+    const leftPressed = this.cursors?.left.isDown;
+    const rightPressed = this.cursors?.right.isDown;
 
     if (leftPressed || rightPressed) {
       const dir = leftPressed ? "left" : "right";
@@ -274,14 +277,14 @@ export class MainGame extends Scene {
         this.moveDirection = dir;
         this.keyPressTime = time;
         this.lastMoveTime = time;
-        this.renderBlock(dir); // Move once immediately
+        this.renderPlayer(dir); // Move once immediately
       } else {
         const heldTime = time - this.keyPressTime;
         const timeSinceLastMove = time - this.lastMoveTime;
 
         if (heldTime >= this.das && timeSinceLastMove >= this.arr) {
           this.lastMoveTime = time;
-          this.renderBlock(dir); // Auto-repeat
+          this.renderPlayer(dir); // Auto-repeat
         }
       }
     } else {
@@ -290,13 +293,15 @@ export class MainGame extends Scene {
       this.keyPressTime = 0;
       this.lastMoveTime = 0;
     }
+  }
 
-    if (downKey.isDown) {
+  handleVerticalMove(time: number) {
+    if (this.cursors?.down.isDown) {
       if (this.downKeyPressTime === 0) {
         // First press
         this.downKeyPressTime = time;
         this.softDropping = false; // Single drop
-        this.renderBlock("down"); // Immediate single drop
+        this.renderPlayer("down"); // Immediate single drop
         this.lastUpdateTime = time; // Reset timer so we don’t double drop
       } else if (time - this.downKeyPressTime > this.softDropDelay) {
         this.softDropping = true; // Begin fast drop after delay
@@ -311,19 +316,32 @@ export class MainGame extends Scene {
 
     if (time > this.lastUpdateTime + currentSpeed) {
       this.lastUpdateTime = time;
-      const collision = this.renderBlock("down");
+      const collision = this.renderPlayer("down");
       if (collision) {
         this.addBlockToGrid();
         this.checkCompletedLines();
       }
     }
-    if (this.cursors.up.isDown && this.canRotate) {
+  }
+
+  handleRotationalMove() {
+    if (this.cursors?.up.isDown && this.canRotate) {
       this.canRotate = false;
-      this.renderBlock("rotate");
+      this.renderPlayer("rotate");
     }
-    if (this.cursors.up.isUp && !this.canRotate) {
+    if (this.cursors?.up.isUp && !this.canRotate) {
       this.canRotate = true;
     }
+  }
+
+  update(time: number) {
+    if (this.clearLinesAnimPause) {
+      return;
+    }
+
+    this.handleHorizontalMove(time);
+    this.handleVerticalMove(time);
+    this.handleRotationalMove();
   }
 
   consoleLogGrid() {
