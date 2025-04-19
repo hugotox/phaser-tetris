@@ -34,6 +34,7 @@ export class MainGame extends Scene {
   rectangles: Phaser.GameObjects.Rectangle[] = [];
   pauseGame = false;
   showGridLines = true;
+  gameOver = false;
 
   constructor() {
     super("Game");
@@ -105,6 +106,10 @@ export class MainGame extends Scene {
     if (!this.playerMatrix) {
       return;
     }
+    if (this.playerRow < 0) {
+      // reached the top, game over
+      return false;
+    }
     for (let x = 0; x < this.playerMatrix.length; x++) {
       for (let y = 0; y < this.playerMatrix[x].length; y++) {
         if (this.playerMatrix[x][y] !== 0) {
@@ -112,6 +117,7 @@ export class MainGame extends Scene {
         }
       }
     }
+    return true;
   }
 
   clearCompletedLines() {
@@ -132,16 +138,19 @@ export class MainGame extends Scene {
 
     this.pauseGame = true;
 
-    this.time.delayedCall(300, () => {
-      deleteRowIndices.forEach((row) => {
-        this.grid.splice(row, 1);
-        this.grid.unshift(Array(COLUMNS).fill(0));
-      });
-      this.playerSprite?.destroy();
-      this.playerSprite = null;
-      this.newBlock();
-      this.renderGridBlocks();
-      this.pauseGame = false;
+    // if there are lines to clear, we pause for longer to show an animation
+    this.time.delayedCall(lines ? 300 : 200, () => {
+      if (!this.gameOver) {
+        deleteRowIndices.forEach((row) => {
+          this.grid.splice(row, 1);
+          this.grid.unshift(Array(COLUMNS).fill(0));
+        });
+        this.playerSprite?.destroy();
+        this.playerSprite = null;
+        this.newBlock();
+        this.renderGridBlocks();
+        this.pauseGame = false;
+      }
     });
 
     // force a down key release
@@ -152,7 +161,6 @@ export class MainGame extends Scene {
   }
 
   newBlock() {
-    console.log("new block");
     const typeCount = BlockTypes.length;
     const newBlockIdx = Math.floor(Math.random() * typeCount);
     this.playerRotation = 1;
@@ -322,7 +330,12 @@ export class MainGame extends Scene {
       this.lastUpdateTime = time;
       const collision = this.renderPlayer("down");
       if (collision) {
-        this.addPlayerToGrid();
+        const added = this.addPlayerToGrid();
+        if (!added) {
+          this.playerRow += 1;
+          this.renderPlayerSprite();
+          this.gameOver = true;
+        }
         this.clearCompletedLines();
       }
     }
@@ -339,7 +352,7 @@ export class MainGame extends Scene {
   }
 
   update(time: number) {
-    if (this.pauseGame) {
+    if (this.pauseGame || this.gameOver) {
       return;
     }
 
