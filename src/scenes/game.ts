@@ -32,7 +32,7 @@ export class MainGame extends Scene {
   playerType: BlockTypesType | null = null;
   playerMatrix: number[][] | null = null;
   rectangles: Phaser.GameObjects.Rectangle[] = [];
-  clearLinesAnimPause = false;
+  pauseGame = false;
   showGridLines = true;
 
   constructor() {
@@ -61,7 +61,7 @@ export class MainGame extends Scene {
 
     this.lastUpdateTime = 0;
     this.cursors = this.input.keyboard?.createCursorKeys();
-    this.renderGridBlocks();
+    // this.renderGridBlocks();
     this.newBlock();
   }
 
@@ -101,7 +101,7 @@ export class MainGame extends Scene {
     return false;
   }
 
-  addBlockToGrid() {
+  addPlayerToGrid() {
     if (!this.playerMatrix) {
       return;
     }
@@ -114,7 +114,7 @@ export class MainGame extends Scene {
     }
   }
 
-  checkCompletedLines() {
+  clearCompletedLines() {
     let lines = 0;
     const deleteRowIndices: number[] = [];
     for (let i = 0; i < ROWS; i++) {
@@ -130,11 +130,9 @@ export class MainGame extends Scene {
       }
     }
 
-    if (lines) {
-      this.clearLinesAnimPause = true;
-    }
+    this.pauseGame = true;
 
-    setTimeout(() => {
+    this.time.delayedCall(300, () => {
       deleteRowIndices.forEach((row) => {
         this.grid.splice(row, 1);
         this.grid.unshift(Array(COLUMNS).fill(0));
@@ -143,8 +141,14 @@ export class MainGame extends Scene {
       this.playerSprite = null;
       this.newBlock();
       this.renderGridBlocks();
-      this.clearLinesAnimPause = false;
-    }, 300);
+      this.pauseGame = false;
+    });
+
+    // force a down key release
+    this.downKeyPressTime = 0;
+    this.softDropping = false;
+
+    return lines;
   }
 
   newBlock() {
@@ -318,8 +322,8 @@ export class MainGame extends Scene {
       this.lastUpdateTime = time;
       const collision = this.renderPlayer("down");
       if (collision) {
-        this.addBlockToGrid();
-        this.checkCompletedLines();
+        this.addPlayerToGrid();
+        this.clearCompletedLines();
       }
     }
   }
@@ -335,7 +339,7 @@ export class MainGame extends Scene {
   }
 
   update(time: number) {
-    if (this.clearLinesAnimPause) {
+    if (this.pauseGame) {
       return;
     }
 
