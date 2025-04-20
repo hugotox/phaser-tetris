@@ -4,6 +4,9 @@ import {
   BlockTypes,
   BlockTypesType,
   COLUMNS,
+  I_KICK_TABLE,
+  JLSTZ_KICK_TABLE,
+  KickTableKey,
   RotationDirection,
   RotationType,
   ROWS,
@@ -240,6 +243,23 @@ export class MainGame extends Scene {
     return rotation;
   }
 
+  canPlacePieceAt(x: number, y: number) {
+    if (!this.playerMatrix) {
+      return false;
+    }
+    for (let i = 0; i < this.playerMatrix.length; i++) {
+      for (let j = 0; j < this.playerMatrix[i].length; j++) {
+        if (
+          this.playerMatrix[i][j] !== 0 &&
+          (this.grid[y + i] === undefined || this.grid[y + i][x + j] !== 0)
+        ) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
   renderPlayer(move: "right" | "left" | "down" | "rotate", rotationDir: RotationDirection = "CW") {
     let collision = false;
     if (move === "right") {
@@ -261,24 +281,32 @@ export class MainGame extends Scene {
         this.playerRow -= 1;
       }
     } else if (move === "rotate") {
+      const prevRotation = this.playerRotation;
+      const newRotation = this.getNextRotation(this.playerRotation, rotationDir);
+      const kickTable = this.playerType === "I" ? I_KICK_TABLE : JLSTZ_KICK_TABLE;
+      const key = `${prevRotation}->${newRotation}` as KickTableKey;
+
       this.playerMatrix = this.rotate(this.playerMatrix, rotationDir);
-      this.playerRotation = this.getNextRotation(this.playerRotation, rotationDir);
-      if (this.checkCollision()) {
-        collision = true;
-        // rollback rotation:
-        this.playerMatrix = this.rotate(this.playerMatrix, rotationDir === "CW" ? "CCW" : "CW");
-        if (rotationDir === "CW") {
-          this.playerRotation = this.getNextRotation(this.playerRotation, "CCW");
-        } else {
-          this.playerRotation = this.getNextRotation(this.playerRotation, "CW");
+
+      for (const [dx, dy] of kickTable[key]) {
+        const testX = this.playerCol + dx;
+        const testY = this.playerRow + dy;
+
+        if (this.canPlacePieceAt(testX, testY)) {
+          this.playerCol = testX;
+          this.playerRow = testY;
+          this.playerRotation = newRotation;
+
+          if (!this.checkCollision()) {
+            collision = false;
+            break;
+          }
         }
-      } else {
-        // rotate sprite animation
       }
     }
 
     this.renderPlayerSprite();
-    // this.consoleLogGrid();
+    this.consoleLogGrid();
     return collision;
   }
 
@@ -394,11 +422,12 @@ export class MainGame extends Scene {
   }
 
   consoleLogGrid() {
-    // console.clear();
+    console.clear();
     console.log({
       X: this.playerRow,
       Y: this.playerCol,
       R: this.playerRotation,
+      matrix: this.playerMatrix,
     });
     let gridString = "";
     for (let row = 0; row < this.grid.length; row++) {
