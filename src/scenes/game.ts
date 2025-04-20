@@ -39,7 +39,7 @@ export class MainGame extends Scene {
   playerMatrix: number[][] | null = null;
   rectangles: Phaser.GameObjects.Rectangle[] = [];
   pauseGame = false;
-  showGridLines = true;
+  showGridLines = false;
   gameOver = false;
 
   constructor() {
@@ -172,7 +172,7 @@ export class MainGame extends Scene {
     const newBlockIdx = Math.floor(Math.random() * typeCount);
     this.playerRotation = "0";
     this.playerType = BlockTypes[newBlockIdx] as BlockTypesType;
-    this.playerRow = this.playerType === "I" ? -2 : -1;
+    this.playerRow = -1; //this.playerType === "I" ? -2 : -1;
     this.playerCol = 3;
     this.playerMatrix = TETROMINOES[this.playerType];
   }
