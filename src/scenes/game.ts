@@ -48,6 +48,10 @@ export class MainGame extends Scene {
 
   preload() {
     this.load.atlas("tetrominos", "assets/tetris-blocks.png", "assets/tetris-blocks.json");
+    this.load.spritesheet("tiles", "assets/tetris-tiles.png", {
+      frameWidth: 8,
+      frameHeight: 8,
+    });
   }
 
   create() {
@@ -71,6 +75,18 @@ export class MainGame extends Scene {
     this.zKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
     // this.renderGridBlocks();
     this.newBlock();
+
+    // this.add
+    //   .sprite(0 * UNIT * BLOCK_SCALE, 1 * UNIT * BLOCK_SCALE, "tiles", 15)
+    //   .setOrigin(0, 0)
+    //   .setScale(BLOCK_SCALE);
+
+    // for (let i = 0; i < 15; i++) {
+    //   this.add
+    //     .sprite(i * UNIT * BLOCK_SCALE, 0, "tiles", i)
+    //     .setOrigin(0, 0)
+    //     .setScale(BLOCK_SCALE);
+    // }
   }
 
   rotate(player: number[][] | null, dir: RotationDirection) {
@@ -146,7 +162,7 @@ export class MainGame extends Scene {
     this.pauseGame = true;
 
     // if there are lines to clear, we pause for longer to show an animation
-    this.time.delayedCall(lines ? 300 : 200, () => {
+    this.time.delayedCall(lines ? 200 + lines * 100 : 200, () => {
       if (!this.gameOver) {
         deleteRowIndices.forEach((row) => {
           this.grid.splice(row, 1);
