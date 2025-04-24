@@ -20,7 +20,7 @@ export class MainGame extends Scene {
   softDropSpeed = 10;
   downKeyPressTime = 0;
   softDropping = false;
-  softDropDelay = 200;
+  softDropDelay = 150;
   das = 150; // Delay before auto-repeat starts (ms)
   arr = 30; // Auto-repeat rate (ms)
   moveDirection: "left" | "right" | null = null; // 'left' or 'right'
@@ -30,6 +30,7 @@ export class MainGame extends Scene {
   cursors: Phaser.Types.Input.Keyboard.CursorKeys | undefined;
   zKey: Phaser.Input.Keyboard.Key | undefined;
   canRotate: boolean = true;
+  // grid: (number | number[])[][] = Array.from({ length: 20 }, () => Array(10).fill(0));
   grid = Array.from({ length: 20 }, () => Array(10).fill(0));
   playerSprite: Phaser.GameObjects.Sprite | null = null;
   playerRow = 0;
@@ -37,7 +38,7 @@ export class MainGame extends Scene {
   playerRotation: RotationType = "0";
   playerType: BlockTypesType | null = null;
   playerMatrix: number[][] | null = null;
-  rectangles: Phaser.GameObjects.Rectangle[] = [];
+  gridBlocks: Phaser.GameObjects.Sprite[] = [];
   pauseGame = false;
   showGridLines = false;
   gameOver = false;
@@ -73,20 +74,7 @@ export class MainGame extends Scene {
     this.lastUpdateTime = 0;
     this.cursors = this.input.keyboard?.createCursorKeys();
     this.zKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
-    // this.renderGridBlocks();
     this.newBlock();
-
-    // this.add
-    //   .sprite(0 * UNIT * BLOCK_SCALE, 1 * UNIT * BLOCK_SCALE, "tiles", 15)
-    //   .setOrigin(0, 0)
-    //   .setScale(BLOCK_SCALE);
-
-    // for (let i = 0; i < 15; i++) {
-    //   this.add
-    //     .sprite(i * UNIT * BLOCK_SCALE, 0, "tiles", i)
-    //     .setOrigin(0, 0)
-    //     .setScale(BLOCK_SCALE);
-    // }
   }
 
   rotate(player: number[][] | null, dir: RotationDirection) {
@@ -136,7 +124,12 @@ export class MainGame extends Scene {
     for (let x = 0; x < this.playerMatrix.length; x++) {
       for (let y = 0; y < this.playerMatrix[x].length; y++) {
         if (this.playerMatrix[x][y] !== 0) {
-          this.grid[this.playerRow + x][this.playerCol + y] = this.playerMatrix[x][y];
+          const top = this.playerMatrix[x - 1]?.[y] ?? 0;
+          const right = this.playerMatrix[x]?.[y + 1] ?? 0;
+          const bottom = this.playerMatrix[x + 1]?.[y] ?? 0;
+          const left = this.playerMatrix[x]?.[y - 1] ?? 0;
+
+          this.grid[this.playerRow + x][this.playerCol + y] = [top, right, bottom, left];
         }
       }
     }
@@ -162,16 +155,44 @@ export class MainGame extends Scene {
     this.pauseGame = true;
 
     // if there are lines to clear, we pause for longer to show an animation
-    this.time.delayedCall(lines ? 200 + lines * 100 : 200, () => {
+    this.time.delayedCall(lines ? 100 + lines * 100 : 100, () => {
       if (!this.gameOver) {
+        deleteRowIndices.forEach((row) => {
+          for (let i = 0; i < COLUMNS; i++) {
+            // update the row above the cleared row to make all blocks to not have bottom connection
+            if (Array.isArray(this.grid[row - 1][i]) && this.grid[row - 1][i].length === 4) {
+              // mark bottom as not connected:
+              const origValue = this.grid[row - 1][i].flat().filter(Boolean)[0];
+              this.grid[row - 1][i][2] = 0;
+
+              if (this.grid[row - 1][i].flat().filter(Boolean).length === 0) {
+                this.grid[row - 1][i] = [origValue];
+              }
+            }
+
+            // update the row below the cleared row to make all blocks to not have top connection
+            if (Array.isArray(this.grid[row + 1]?.[i]) && this.grid[row + 1][i].length === 4) {
+              // mark top as not connected:
+              const origValue = this.grid[row + 1][i].flat().filter(Boolean)[0];
+              this.grid[row + 1][i][0] = 0;
+
+              if (this.grid[row + 1][i].flat().filter(Boolean).length === 0) {
+                this.grid[row + 1][i] = [origValue];
+              }
+            }
+          }
+        });
+
         deleteRowIndices.forEach((row) => {
           this.grid.splice(row, 1);
           this.grid.unshift(Array(COLUMNS).fill(0));
         });
+
         this.playerSprite?.destroy();
         this.playerSprite = null;
         this.newBlock();
         this.renderGridBlocks();
+        this.consoleLogGrid();
         this.pauseGame = false;
       }
     });
@@ -188,7 +209,7 @@ export class MainGame extends Scene {
     const newBlockIdx = Math.floor(Math.random() * typeCount);
     this.playerRotation = "0";
     this.playerType = BlockTypes[newBlockIdx] as BlockTypesType;
-    this.playerRow = -1; //this.playerType === "I" ? -2 : -1;
+    this.playerRow = -1;
     this.playerCol = 3;
     this.playerMatrix = TETROMINOES[this.playerType];
   }
@@ -327,21 +348,67 @@ export class MainGame extends Scene {
   }
 
   renderGridBlocks() {
-    this.rectangles.forEach((rectangle) => rectangle.destroy());
+    this.gridBlocks.forEach((block) => block.destroy());
 
     for (let row = 0; row < this.grid.length; row++) {
       for (let col = 0; col < this.grid[row].length; col++) {
         if (this.grid[row][col] !== 0) {
-          const rectangle = this.add
-            .rectangle(
-              col * UNIT * BLOCK_SCALE,
-              row * UNIT * BLOCK_SCALE,
-              UNIT * BLOCK_SCALE,
-              UNIT * BLOCK_SCALE,
-              0x333333,
-            )
-            .setOrigin(0, 0);
-          this.rectangles.push(rectangle);
+          if (Array.isArray(this.grid[row][col])) {
+            //
+            const top = this.grid[row][col][0];
+            const right = this.grid[row][col][1];
+            const bottom = this.grid[row][col][2];
+            const left = this.grid[row][col][3];
+            let sprite = 14;
+
+            if (this.grid[row][col].length === 4) {
+              if (!top && right && !bottom && !left) {
+                sprite = 0;
+              } else if (!top && right && !bottom && left) {
+                sprite = 1;
+              } else if (!top && !right && !bottom && left) {
+                sprite = 2;
+              } else if (!top && !right && bottom && !left) {
+                sprite = 3;
+              } else if (top && !right && bottom && !left) {
+                sprite = 4;
+              } else if (top && !right && !bottom && !left) {
+                sprite = 5;
+              } else if (top && right && !bottom && left) {
+                sprite = 6;
+              } else if (top && right && bottom && !left) {
+                sprite = 7;
+              } else if (!top && right && bottom && left) {
+                sprite = 8;
+              } else if (top && !right && bottom && left) {
+                sprite = 9;
+              } else if (!top && right && bottom && !left) {
+                sprite = 10;
+              } else if (top && !right && !bottom && left) {
+                sprite = 11;
+              } else if (top && right && !bottom && !left) {
+                sprite = 12;
+              } else if (!top && !right && bottom && left) {
+                sprite = 13;
+              } else if (!top && !right && !bottom && !left) {
+                sprite = 14;
+              }
+            }
+
+            const color = (this.grid[row][col].flat().filter(Boolean)[0] ?? 8) - 1;
+
+            const block = this.add
+              .sprite(
+                col * UNIT * BLOCK_SCALE,
+                row * UNIT * BLOCK_SCALE,
+                "tiles",
+                sprite + 15 * color,
+              )
+              .setOrigin(0, 0)
+              .setScale(BLOCK_SCALE);
+            this.gridBlocks.push(block);
+            //
+          }
         }
       }
     }
@@ -438,7 +505,7 @@ export class MainGame extends Scene {
   }
 
   consoleLogGrid() {
-    console.clear();
+    // console.clear();
     console.log({
       X: this.playerRow,
       Y: this.playerCol,
