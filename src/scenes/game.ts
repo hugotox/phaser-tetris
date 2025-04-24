@@ -7,6 +7,8 @@ import {
   I_KICK_TABLE,
   JLSTZ_KICK_TABLE,
   KickTableKey,
+  PLAY_AREA_X,
+  PLAY_AREA_Y,
   RotationDirection,
   RotationType,
   ROWS,
@@ -81,7 +83,13 @@ export class MainGame extends Scene {
 
   create() {
     this.add
-      .rectangle(0, 0, 10 * UNIT * BLOCK_SCALE, 20 * UNIT * BLOCK_SCALE, 0x000000)
+      .rectangle(
+        PLAY_AREA_X,
+        PLAY_AREA_Y,
+        10 * UNIT * BLOCK_SCALE,
+        20 * UNIT * BLOCK_SCALE,
+        0x000000,
+      )
       .setOrigin(0, 0);
 
     if (this.showGridLines) {
@@ -216,7 +224,7 @@ export class MainGame extends Scene {
         this.playerSprite = null;
         this.newBlock();
         this.renderGridBlocks();
-        this.consoleLogGrid();
+        // this.consoleLogGrid();
         this.pauseGame = false;
       }
     });
@@ -267,13 +275,18 @@ export class MainGame extends Scene {
 
     if (!this.playerSprite) {
       this.playerSprite = this.add
-        .sprite(newX * UNIT * BLOCK_SCALE, newY * UNIT * BLOCK_SCALE, "tetrominos", sprite)
+        .sprite(
+          newX * UNIT * BLOCK_SCALE + PLAY_AREA_X,
+          newY * UNIT * BLOCK_SCALE + PLAY_AREA_Y,
+          "tetrominos",
+          sprite,
+        )
         .setOrigin(0, 0)
         .setScale(BLOCK_SCALE);
     } else {
       this.playerSprite.setFrame(sprite);
-      this.playerSprite.setX(newX * UNIT * BLOCK_SCALE);
-      this.playerSprite.setY(newY * UNIT * BLOCK_SCALE);
+      this.playerSprite.setX(newX * UNIT * BLOCK_SCALE + PLAY_AREA_X);
+      this.playerSprite.setY(newY * UNIT * BLOCK_SCALE + PLAY_AREA_Y);
     }
   }
 
@@ -365,7 +378,6 @@ export class MainGame extends Scene {
     }
 
     this.renderPlayerSprite();
-    this.consoleLogGrid();
     return collision;
   }
 
@@ -421,8 +433,8 @@ export class MainGame extends Scene {
 
             const block = this.add
               .sprite(
-                col * UNIT * BLOCK_SCALE,
-                row * UNIT * BLOCK_SCALE,
+                col * UNIT * BLOCK_SCALE + PLAY_AREA_X,
+                row * UNIT * BLOCK_SCALE + PLAY_AREA_Y,
                 "tiles",
                 sprite + 15 * color,
               )

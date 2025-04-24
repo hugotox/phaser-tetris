@@ -4,6 +4,8 @@ export const UNIT = 8;
 export const COLUMNS = 10;
 export const ROWS = 20;
 export const BLOCK_SCALE = 4;
+export const PLAY_AREA_X = 60;
+export const PLAY_AREA_Y = 30;
 
 export const TETROMINOES = {
   T: [
