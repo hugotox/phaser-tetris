@@ -14,6 +14,28 @@ import {
   UNIT,
 } from "../constants";
 
+class PieceGenerator {
+  private bag: BlockTypesType[] = [];
+
+  constructor(private blockTypes: BlockTypesType[]) {}
+
+  private shuffleBag() {
+    this.bag = [...this.blockTypes];
+    for (let i = this.bag.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [this.bag[i], this.bag[j]] = [this.bag[j], this.bag[i]];
+    }
+  }
+
+  generatePiece(): BlockTypesType {
+    if (this.bag.length === 0) {
+      this.shuffleBag();
+    }
+    const piece = this.bag.pop()!;
+    return piece;
+  }
+}
+
 export class MainGame extends Scene {
   lastUpdateTime = 0;
   gameSpeed = 1000;
@@ -42,6 +64,8 @@ export class MainGame extends Scene {
   pauseGame = false;
   showGridLines = false;
   gameOver = false;
+
+  pieceGenerator = new PieceGenerator(BlockTypes as BlockTypesType[]);
 
   constructor() {
     super("Game");
@@ -205,10 +229,8 @@ export class MainGame extends Scene {
   }
 
   newBlock() {
-    const typeCount = BlockTypes.length;
-    const newBlockIdx = Math.floor(Math.random() * typeCount);
     this.playerRotation = "0";
-    this.playerType = BlockTypes[newBlockIdx] as BlockTypesType;
+    this.playerType = this.pieceGenerator.generatePiece();
     this.playerRow = -1;
     this.playerCol = 3;
     this.playerMatrix = TETROMINOES[this.playerType];
