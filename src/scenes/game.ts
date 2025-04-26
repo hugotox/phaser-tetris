@@ -45,7 +45,7 @@ export class MainGame extends Scene {
   playerMatrix: number[][] | null = null;
   gridBlocks: Phaser.GameObjects.Sprite[] = [];
   pauseGame = false;
-  showGridLines = true;
+  showGridLines = false;
   gameOver = false;
 
   pieceGenerator = new PieceGenerator(BlockTypes as BlockTypesType[]);
@@ -55,10 +55,10 @@ export class MainGame extends Scene {
   }
 
   preload() {
-    this.load.atlas("tetrominos", "assets/tetris-blocks.png", "assets/tetris-blocks.json");
-    this.load.spritesheet("tiles", "assets/tetris-tiles.png", {
-      frameWidth: 8,
-      frameHeight: 8,
+    this.load.atlas("tetrominos", "assets/tetris-blocks2.png", "assets/tetris-blocks2.json");
+    this.load.spritesheet("tiles", "assets/tetris-tiles2.png", {
+      frameWidth: 32,
+      frameHeight: 32,
     });
   }
 
@@ -274,8 +274,8 @@ export class MainGame extends Scene {
           "tetrominos",
           sprite,
         )
-        .setOrigin(0, 0)
-        .setScale(BLOCK_SCALE);
+        .setOrigin(0, 0);
+      // .setScale(BLOCK_SCALE);
     } else {
       this.playerSprite.setFrame(sprite);
       this.playerSprite.setX(newX * UNIT * BLOCK_SCALE + PLAY_AREA_X);
@@ -437,8 +437,8 @@ export class MainGame extends Scene {
                 "tiles",
                 sprite + 15 * color,
               )
-              .setOrigin(0, 0)
-              .setScale(BLOCK_SCALE);
+              .setOrigin(0, 0);
+            // .setScale(BLOCK_SCALE);
             this.gridBlocks.push(block);
             //
           }
