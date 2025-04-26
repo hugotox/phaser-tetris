@@ -15,36 +15,15 @@ import {
   TETROMINOES,
   UNIT,
 } from "../constants";
-
-class PieceGenerator {
-  private bag: BlockTypesType[] = [];
-
-  constructor(private blockTypes: BlockTypesType[]) {}
-
-  private shuffleBag() {
-    this.bag = [...this.blockTypes];
-    for (let i = this.bag.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [this.bag[i], this.bag[j]] = [this.bag[j], this.bag[i]];
-    }
-  }
-
-  generatePiece(): BlockTypesType {
-    if (this.bag.length === 0) {
-      this.shuffleBag();
-    }
-    const piece = this.bag.pop()!;
-    return piece;
-  }
-}
+import { PieceGenerator } from "../lib/PieceGenerator";
 
 export class MainGame extends Scene {
   lastUpdateTime = 0;
   gameSpeed = 1000;
-  softDropSpeed = 10;
+  softDropSpeed = 30;
   downKeyPressTime = 0;
   softDropping = false;
-  softDropDelay = 150;
+  softDropDelay = 100;
   das = 150; // Delay before auto-repeat starts (ms)
   arr = 30; // Auto-repeat rate (ms)
   moveDirection: "left" | "right" | null = null; // 'left' or 'right'
@@ -53,7 +32,9 @@ export class MainGame extends Scene {
 
   cursors: Phaser.Types.Input.Keyboard.CursorKeys | undefined;
   zKey: Phaser.Input.Keyboard.Key | undefined;
+  spaceKey: Phaser.Input.Keyboard.Key | undefined;
   canRotate: boolean = true;
+  inputLocked: boolean = false;
   // grid: (number | number[])[][] = Array.from({ length: 20 }, () => Array(10).fill(0));
   grid = Array.from({ length: 20 }, () => Array(10).fill(0));
   playerSprite: Phaser.GameObjects.Sprite | null = null;
@@ -64,7 +45,7 @@ export class MainGame extends Scene {
   playerMatrix: number[][] | null = null;
   gridBlocks: Phaser.GameObjects.Sprite[] = [];
   pauseGame = false;
-  showGridLines = false;
+  showGridLines = true;
   gameOver = false;
 
   pieceGenerator = new PieceGenerator(BlockTypes as BlockTypesType[]);
@@ -95,17 +76,29 @@ export class MainGame extends Scene {
     if (this.showGridLines) {
       for (let i = 1; i < COLUMNS; i++) {
         const x = UNIT * BLOCK_SCALE * i;
-        this.add.line(0, 0, x, 0, x, UNIT * BLOCK_SCALE * 20, 0x222222).setOrigin(0, 0);
+        this.add
+          .line(PLAY_AREA_X, PLAY_AREA_Y, x, 0, x, UNIT * BLOCK_SCALE * 20, 0x222222)
+          .setOrigin(0, 0);
       }
       for (let i = 1; i < ROWS; i++) {
         const y = UNIT * BLOCK_SCALE * i;
-        this.add.line(0, 0, 0, y, UNIT * BLOCK_SCALE * 10, y, 0x222222).setOrigin(0, 0);
+        this.add
+          .line(PLAY_AREA_X, PLAY_AREA_Y, 0, y, UNIT * BLOCK_SCALE * 10, y, 0x222222)
+          .setOrigin(0, 0);
       }
     }
 
     this.lastUpdateTime = 0;
     this.cursors = this.input.keyboard?.createCursorKeys();
     this.zKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
+    // this.spaceKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+
+    this.input?.keyboard?.on("keydown-SPACE", () => {
+      if (!this.inputLocked && this.playerSprite) {
+        this.handleHardDrop();
+      }
+    });
+
     this.newBlock();
   }
 
@@ -168,7 +161,7 @@ export class MainGame extends Scene {
     return true;
   }
 
-  clearCompletedLines() {
+  clearCompletedLines(callback?: () => void) {
     let lines = 0;
     const deleteRowIndices: number[] = [];
     for (let i = 0; i < ROWS; i++) {
@@ -187,7 +180,7 @@ export class MainGame extends Scene {
     this.pauseGame = true;
 
     // if there are lines to clear, we pause for longer to show an animation
-    this.time.delayedCall(lines ? 100 + lines * 100 : 100, () => {
+    this.time.delayedCall(lines ? 100 + lines * 100 : 10, () => {
       if (!this.gameOver) {
         deleteRowIndices.forEach((row) => {
           for (let i = 0; i < COLUMNS; i++) {
@@ -224,8 +217,8 @@ export class MainGame extends Scene {
         this.playerSprite = null;
         this.newBlock();
         this.renderGridBlocks();
-        // this.consoleLogGrid();
         this.pauseGame = false;
+        callback?.();
       }
     });
 
@@ -359,6 +352,7 @@ export class MainGame extends Scene {
       const key = `${prevRotation}->${newRotation}` as KickTableKey;
 
       this.playerMatrix = this.rotate(this.playerMatrix, rotationDir);
+      collision = true;
 
       for (const [dx, dy] of kickTable[key]) {
         const testX = this.playerCol + dx;
@@ -374,6 +368,11 @@ export class MainGame extends Scene {
             break;
           }
         }
+      }
+
+      if (collision) {
+        this.playerMatrix = this.rotate(this.playerMatrix, rotationDir === "CW" ? "CCW" : "CW");
+        this.playerRotation = prevRotation;
       }
     }
 
@@ -478,6 +477,54 @@ export class MainGame extends Scene {
     }
   }
 
+  handleHardDrop() {
+    console.log("hard drop");
+    this.inputLocked = true; // Prevent multiple hard drops on a single press
+
+    // Calculate the target row for the hard drop
+    const initialRow = this.playerRow;
+    let testRow = this.playerRow; // Use a temporary variable
+    while (true) {
+      testRow += 1;
+      this.playerRow = testRow;
+      if (this.checkCollision()) {
+        testRow -= 1; // Undo the last move that caused the collision
+        break;
+      }
+    }
+    const targetRow = testRow;
+
+    // Animate the drop
+    const distance = targetRow - initialRow;
+    const duration = Phaser.Math.Clamp(distance * 10, 50, 200);
+
+    this.tweens.add({
+      targets: this.playerSprite,
+      y: targetRow * UNIT * BLOCK_SCALE + PLAY_AREA_Y,
+      duration,
+      ease: "Quad.easeIn",
+      onComplete: () => {
+        // Update the logical position after the animation
+        this.playerRow = targetRow;
+
+        // Lock the piece into the grid after the animation
+        const added = this.addPlayerToGrid();
+        if (!added) {
+          this.playerRow += 1;
+          this.renderPlayerSprite();
+          this.gameOver = true;
+        }
+
+        // Clear completed lines and spawn a new block
+        this.clearCompletedLines(() => {
+          this.inputLocked = false;
+        });
+
+        console.log("hard drop complete");
+      },
+    });
+  }
+
   handleVerticalMove(time: number) {
     if (this.cursors?.down.isDown) {
       if (this.downKeyPressTime === 0) {
@@ -509,6 +556,7 @@ export class MainGame extends Scene {
         }
         this.clearCompletedLines();
       }
+      this.consoleLogGrid();
     }
   }
 
@@ -529,12 +577,12 @@ export class MainGame extends Scene {
   }
 
   update(time: number) {
-    if (this.pauseGame || this.gameOver) {
+    if (this.pauseGame || this.gameOver || this.inputLocked) {
       return;
     }
 
-    this.handleHorizontalMove(time);
     this.handleVerticalMove(time);
+    this.handleHorizontalMove(time);
     this.handleRotationalMove();
   }
 
@@ -557,7 +605,7 @@ export class MainGame extends Scene {
       }
       gridString += `${String(row).padStart(2, " ")}: `;
       for (let col = 0; col < this.grid[row].length; col++) {
-        gridString += String(this.grid[row][col] ? this.grid[row][col] : ".") + "   ";
+        gridString += String(this.grid[row][col] ? "#" : ".") + "   ";
       }
       gridString += "\n";
     }
