@@ -7,8 +7,6 @@ import {
   I_KICK_TABLE,
   JLSTZ_KICK_TABLE,
   KickTableKey,
-  PLAY_AREA_X,
-  PLAY_AREA_Y,
   RotationDirection,
   RotationType,
   ROWS,
@@ -18,6 +16,8 @@ import {
 import { PieceGenerator } from "../lib/PieceGenerator";
 
 export class MainGame extends Scene {
+  playAreaX = 10;
+  playAreaY = 10;
   lastUpdateTime = 0;
   gameSpeed = 1000;
   softDropSpeed = 30;
@@ -63,12 +63,15 @@ export class MainGame extends Scene {
   }
 
   create() {
+    const playAreaWidth = 10 * UNIT * BLOCK_SCALE;
+    this.playAreaX = (this.cameras.main.width - playAreaWidth) / 2;
+
     this.add
       .rectangle(
-        PLAY_AREA_X,
-        PLAY_AREA_Y,
-        10 * UNIT * BLOCK_SCALE,
-        20 * UNIT * BLOCK_SCALE,
+        this.playAreaX,
+        this.playAreaY,
+        10 * UNIT * BLOCK_SCALE + UNIT / 2,
+        20 * UNIT * BLOCK_SCALE + UNIT / 2,
         0x000000,
       )
       .setOrigin(0, 0);
@@ -77,13 +80,13 @@ export class MainGame extends Scene {
       for (let i = 1; i < COLUMNS; i++) {
         const x = UNIT * BLOCK_SCALE * i;
         this.add
-          .line(PLAY_AREA_X, PLAY_AREA_Y, x, 0, x, UNIT * BLOCK_SCALE * 20, 0x222222)
+          .line(this.playAreaX, this.playAreaY, x, 0, x, UNIT * BLOCK_SCALE * 20, 0x222222)
           .setOrigin(0, 0);
       }
       for (let i = 1; i < ROWS; i++) {
         const y = UNIT * BLOCK_SCALE * i;
         this.add
-          .line(PLAY_AREA_X, PLAY_AREA_Y, 0, y, UNIT * BLOCK_SCALE * 10, y, 0x222222)
+          .line(this.playAreaX, this.playAreaY, 0, y, UNIT * BLOCK_SCALE * 10, y, 0x222222)
           .setOrigin(0, 0);
       }
     }
@@ -269,8 +272,8 @@ export class MainGame extends Scene {
     if (!this.playerSprite) {
       this.playerSprite = this.add
         .sprite(
-          newX * UNIT * BLOCK_SCALE + PLAY_AREA_X,
-          newY * UNIT * BLOCK_SCALE + PLAY_AREA_Y,
+          newX * UNIT * BLOCK_SCALE + this.playAreaX,
+          newY * UNIT * BLOCK_SCALE + this.playAreaY,
           "tetrominos",
           sprite,
         )
@@ -278,8 +281,8 @@ export class MainGame extends Scene {
       // .setScale(BLOCK_SCALE);
     } else {
       this.playerSprite.setFrame(sprite);
-      this.playerSprite.setX(newX * UNIT * BLOCK_SCALE + PLAY_AREA_X);
-      this.playerSprite.setY(newY * UNIT * BLOCK_SCALE + PLAY_AREA_Y);
+      this.playerSprite.setX(newX * UNIT * BLOCK_SCALE + this.playAreaX);
+      this.playerSprite.setY(newY * UNIT * BLOCK_SCALE + this.playAreaY);
     }
   }
 
@@ -432,8 +435,8 @@ export class MainGame extends Scene {
 
             const block = this.add
               .sprite(
-                col * UNIT * BLOCK_SCALE + PLAY_AREA_X,
-                row * UNIT * BLOCK_SCALE + PLAY_AREA_Y,
+                col * UNIT * BLOCK_SCALE + this.playAreaX,
+                row * UNIT * BLOCK_SCALE + this.playAreaY,
                 "tiles",
                 sprite + 15 * color,
               )
@@ -478,7 +481,6 @@ export class MainGame extends Scene {
   }
 
   handleHardDrop() {
-    console.log("hard drop");
     this.inputLocked = true; // Prevent multiple hard drops on a single press
 
     // Calculate the target row for the hard drop
@@ -500,7 +502,7 @@ export class MainGame extends Scene {
 
     this.tweens.add({
       targets: this.playerSprite,
-      y: targetRow * UNIT * BLOCK_SCALE + PLAY_AREA_Y,
+      y: targetRow * UNIT * BLOCK_SCALE + this.playAreaY,
       duration,
       ease: "Quad.easeIn",
       onComplete: () => {
@@ -519,8 +521,6 @@ export class MainGame extends Scene {
         this.clearCompletedLines(() => {
           this.inputLocked = false;
         });
-
-        console.log("hard drop complete");
       },
     });
   }
@@ -556,7 +556,7 @@ export class MainGame extends Scene {
         }
         this.clearCompletedLines();
       }
-      this.consoleLogGrid();
+      // this.consoleLogGrid();
     }
   }
 

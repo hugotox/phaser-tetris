@@ -11,7 +11,7 @@ const config: Types.Core.GameConfig = {
   parent: "game",
   backgroundColor: "#008080", // "#333",
   scale: {
-    mode: Scale.NONE,
+    mode: Scale.FIT,
     autoCenter: Scale.CENTER_BOTH,
   },
   antialias: false,
