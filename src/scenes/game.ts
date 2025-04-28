@@ -68,6 +68,7 @@ export class MainGame extends Scene {
     });
     this.load.audio("tetrisMusic", tetrisMusic);
     this.load.image("background", "assets/background.png");
+    this.load.bitmapFont("arcade", "assets/arcade.png", "assets/arcade.xml");
   }
 
   create() {
@@ -127,6 +128,11 @@ export class MainGame extends Scene {
       )
       .setOrigin(0, 0);
 
+    this.add
+      .bitmapText(this.playAreaX + playAreaWidth + 40, this.playAreaY + 20, "arcade", "Next", 22)
+      .setOrigin(0, 0)
+      .setTint(0xffe066);
+
     // score area background
     this.add
       .rectangle(
@@ -137,6 +143,11 @@ export class MainGame extends Scene {
         0x000000,
       )
       .setOrigin(0, 0);
+
+    this.add
+      .bitmapText(this.playAreaX - 200, this.playAreaY + 20, "arcade", "Score", 22)
+      .setOrigin(0, 0)
+      .setTint(0xffe066);
 
     if (this.showGridLines) {
       for (let i = 1; i < COLUMNS; i++) {
@@ -624,7 +635,7 @@ export class MainGame extends Scene {
         const sprite = `${this.nextPieces[i]}-0`;
         this.nextPiecesSprites.push(
           this.add
-            .sprite(this.playAreaX + playAreaWidth + 60, 40 + 80 * i, "tetrominos", sprite)
+            .sprite(this.playAreaX + playAreaWidth + 80, 90 + 80 * i, "tetrominos", sprite)
             .setScale(0.8)
             .setOrigin(0, 0),
         );

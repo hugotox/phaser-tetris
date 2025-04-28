@@ -14,7 +14,7 @@ const config: Types.Core.GameConfig = {
     mode: Scale.FIT,
     autoCenter: Scale.CENTER_BOTH,
   },
-  antialias: true,
+  antialias: false,
   scene: [MainGame],
 };
 
