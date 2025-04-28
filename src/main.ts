@@ -9,7 +9,7 @@ const config: Types.Core.GameConfig = {
   width: GAME_WIDTH,
   height: GAME_HEIGHT,
   parent: "game",
-  backgroundColor: "#008080", // "#333",
+  backgroundColor: "#333",
   scale: {
     mode: Scale.FIT,
     autoCenter: Scale.CENTER_BOTH,

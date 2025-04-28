@@ -18,11 +18,11 @@ import tetrisMusic from "../lib/tetris-theme.mp3";
 import { getNextRotation, rotateMatrix } from "../lib/utils";
 
 export class MainGame extends Scene {
-  playAreaX = 10;
-  playAreaY = 10;
+  playAreaX = 0; // set in setupWorld
+  playAreaY = 20;
   lastUpdateTime = 0;
   gameSpeed = 1000;
-  softDropSpeed = 30;
+  softDropSpeed = 20;
   downKeyPressTime = 0;
   softDropping = false;
   softDropDelay = 100;
@@ -53,6 +53,8 @@ export class MainGame extends Scene {
   downKeyReleased = true;
 
   pieceGenerator = new PieceGenerator(BlockTypes as BlockTypesType[]);
+  nextPieces: BlockTypesType[] = [];
+  nextPiecesSprites: Phaser.GameObjects.Sprite[] = [];
 
   constructor() {
     super("Game");
@@ -65,25 +67,73 @@ export class MainGame extends Scene {
       frameHeight: 32,
     });
     this.load.audio("tetrisMusic", tetrisMusic);
+    this.load.image("background", "assets/background.png");
   }
 
   create() {
+    this.setupWorld();
+    this.setupMusic();
+
+    this.lastUpdateTime = 0;
+    this.cursors = this.input.keyboard?.createCursorKeys();
+    this.zKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
+    // this.spaceKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+
+    this.input?.keyboard?.on("keydown-SPACE", () => {
+      if (!this.inputLocked && this.playerSprite) {
+        this.handleHardDrop();
+      }
+    });
+
+    this.nextPieces.push(this.pieceGenerator.generatePiece());
+
+    this.newBlock();
+  }
+
+  setupMusic() {
+    this.bgMusic = this.sound.add("tetrisMusic");
+    this.bgMusic.loop = true;
+    // this.bgMusic.play();
+  }
+
+  setupWorld() {
+    // this.add.image(0, 0, "background").setOrigin(0, 0);
+
     const playAreaWidth = 10 * UNIT * BLOCK_SCALE;
     const playAreaHeight = 20 * UNIT * BLOCK_SCALE;
     this.playAreaX = (this.cameras.main.width - playAreaWidth) / 2;
 
     console.log({ playAreaWidth, playAreaHeight });
 
-    this.bgMusic = this.sound.add("tetrisMusic");
-    this.bgMusic.loop = true;
-    // this.bgMusic.play();
-
+    // play area background:
     this.add
       .rectangle(
         this.playAreaX,
         this.playAreaY,
         10 * UNIT * BLOCK_SCALE + UNIT / 2,
         20 * UNIT * BLOCK_SCALE + UNIT / 2,
+        0x000000,
+      )
+      .setOrigin(0, 0);
+
+    // next piece area background
+    this.add
+      .rectangle(
+        this.playAreaX + playAreaWidth + 20,
+        this.playAreaY,
+        200,
+        10 * UNIT * BLOCK_SCALE + UNIT / 2,
+        0x000000,
+      )
+      .setOrigin(0, 0);
+
+    // score area background
+    this.add
+      .rectangle(
+        this.playAreaX - 200 - 20,
+        this.playAreaY,
+        200,
+        10 * UNIT * BLOCK_SCALE + UNIT / 2,
         0x000000,
       )
       .setOrigin(0, 0);
@@ -102,19 +152,6 @@ export class MainGame extends Scene {
           .setOrigin(0, 0);
       }
     }
-
-    this.lastUpdateTime = 0;
-    this.cursors = this.input.keyboard?.createCursorKeys();
-    this.zKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
-    // this.spaceKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
-
-    this.input?.keyboard?.on("keydown-SPACE", () => {
-      if (!this.inputLocked && this.playerSprite) {
-        this.handleHardDrop();
-      }
-    });
-
-    this.newBlock();
   }
 
   checkCollision() {
@@ -228,8 +265,12 @@ export class MainGame extends Scene {
   }
 
   newBlock() {
+    const nextPiece = this.nextPieces.shift();
+    if (!nextPiece) {
+      return;
+    }
+    this.playerType = nextPiece; //this.pieceGenerator.generatePiece();
     this.playerRotation = "0";
-    this.playerType = this.pieceGenerator.generatePiece();
     this.playerRow = 0;
     this.playerCol = 3;
     this.playerMatrix = TETROMINOES[this.playerType];
@@ -572,6 +613,25 @@ export class MainGame extends Scene {
     }
   }
 
+  renderNextPieces() {
+    if (this.nextPieces.length < 1) {
+      while (this.nextPieces.length < 1) {
+        this.nextPieces.push(this.pieceGenerator.generatePiece());
+      }
+      this.nextPiecesSprites.forEach((s) => s.destroy());
+      const playAreaWidth = 10 * UNIT * BLOCK_SCALE;
+      for (let i = 0; i < this.nextPieces.length; i++) {
+        const sprite = `${this.nextPieces[i]}-0`;
+        this.nextPiecesSprites.push(
+          this.add
+            .sprite(this.playAreaX + playAreaWidth + 60, 40 + 80 * i, "tetrominos", sprite)
+            .setScale(0.8)
+            .setOrigin(0, 0),
+        );
+      }
+    }
+  }
+
   update(time: number) {
     if (this.pauseGame || this.gameOver || this.inputLocked) {
       return;
@@ -580,5 +640,6 @@ export class MainGame extends Scene {
     this.handleHorizontalMove(time);
     this.handleVerticalMove(time);
     this.handleRotationalMove();
+    this.renderNextPieces();
   }
 }
