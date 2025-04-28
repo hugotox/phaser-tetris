@@ -14,6 +14,8 @@ import {
   UNIT,
 } from "../constants";
 import { PieceGenerator } from "../lib/PieceGenerator";
+import tetrisMusic from "../lib/tetris-theme.mp3";
+import { getNextRotation, rotateMatrix } from "../lib/utils";
 
 export class MainGame extends Scene {
   playAreaX = 10;
@@ -29,6 +31,7 @@ export class MainGame extends Scene {
   moveDirection: "left" | "right" | null = null; // 'left' or 'right'
   keyPressTime = 0;
   lastMoveTime = 0;
+  bgMusic: Phaser.Sound.NoAudioSound | Phaser.Sound.HTML5AudioSound | Phaser.Sound.WebAudioSound;
 
   cursors: Phaser.Types.Input.Keyboard.CursorKeys | undefined;
   zKey: Phaser.Input.Keyboard.Key | undefined;
@@ -47,6 +50,7 @@ export class MainGame extends Scene {
   pauseGame = false;
   showGridLines = false;
   gameOver = false;
+  downKeyReleased = true;
 
   pieceGenerator = new PieceGenerator(BlockTypes as BlockTypesType[]);
 
@@ -60,11 +64,19 @@ export class MainGame extends Scene {
       frameWidth: 32,
       frameHeight: 32,
     });
+    this.load.audio("tetrisMusic", tetrisMusic);
   }
 
   create() {
     const playAreaWidth = 10 * UNIT * BLOCK_SCALE;
+    const playAreaHeight = 20 * UNIT * BLOCK_SCALE;
     this.playAreaX = (this.cameras.main.width - playAreaWidth) / 2;
+
+    console.log({ playAreaWidth, playAreaHeight });
+
+    this.bgMusic = this.sound.add("tetrisMusic");
+    this.bgMusic.loop = true;
+    // this.bgMusic.play();
 
     this.add
       .rectangle(
@@ -105,24 +117,6 @@ export class MainGame extends Scene {
     this.newBlock();
   }
 
-  rotate(player: number[][] | null, dir: RotationDirection) {
-    if (!player) {
-      return null;
-    }
-    const matrix: number[][] = JSON.parse(JSON.stringify(player));
-    for (let y = 0; y < matrix.length; ++y) {
-      for (let x = 0; x < y; ++x) {
-        [matrix[x][y], matrix[y][x]] = [matrix[y][x], matrix[x][y]];
-      }
-    }
-    if (dir === "CW") {
-      matrix.forEach((row) => row.reverse());
-    } else {
-      matrix.reverse();
-    }
-    return matrix;
-  }
-
   checkCollision() {
     if (!this.playerMatrix) {
       return false;
@@ -145,7 +139,7 @@ export class MainGame extends Scene {
     if (!this.playerMatrix) {
       return;
     }
-    if (this.playerRow < 0) {
+    if (this.playerRow === 0) {
       // reached the top, game over
       return false;
     }
@@ -221,6 +215,7 @@ export class MainGame extends Scene {
         this.newBlock();
         this.renderGridBlocks();
         this.pauseGame = false;
+        this.inputLocked = false;
         callback?.();
       }
     });
@@ -235,9 +230,20 @@ export class MainGame extends Scene {
   newBlock() {
     this.playerRotation = "0";
     this.playerType = this.pieceGenerator.generatePiece();
-    this.playerRow = -1;
+    this.playerRow = 0;
     this.playerCol = 3;
     this.playerMatrix = TETROMINOES[this.playerType];
+
+    let collision = false;
+    if (this.checkCollision()) {
+      collision = true;
+    }
+    this.renderPlayerSprite();
+    if (collision) {
+      this.lockPiece();
+    }
+
+    this.lastUpdateTime = this.time.now;
   }
 
   renderPlayerSprite() {
@@ -286,31 +292,6 @@ export class MainGame extends Scene {
     }
   }
 
-  getNextRotation(rotation: RotationType, dir: RotationDirection): RotationType {
-    if (dir === "CW") {
-      if (rotation === "0") {
-        return "R" as RotationType;
-      } else if (rotation === "R") {
-        return "2" as RotationType;
-      } else if (rotation === "2") {
-        return "L" as RotationType;
-      } else if (rotation === "L") {
-        return "0" as RotationType;
-      }
-    } else {
-      if (rotation === "0") {
-        return "L" as RotationType;
-      } else if (rotation === "L") {
-        return "2" as RotationType;
-      } else if (rotation === "2") {
-        return "R" as RotationType;
-      } else if (rotation === "R") {
-        return "0" as RotationType;
-      }
-    }
-    return rotation;
-  }
-
   canPlacePieceAt(x: number, y: number) {
     if (!this.playerMatrix) {
       return false;
@@ -350,11 +331,11 @@ export class MainGame extends Scene {
       }
     } else if (move === "rotate") {
       const prevRotation = this.playerRotation;
-      const newRotation = this.getNextRotation(this.playerRotation, rotationDir);
+      const newRotation = getNextRotation(this.playerRotation, rotationDir);
       const kickTable = this.playerType === "I" ? I_KICK_TABLE : JLSTZ_KICK_TABLE;
       const key = `${prevRotation}->${newRotation}` as KickTableKey;
 
-      this.playerMatrix = this.rotate(this.playerMatrix, rotationDir);
+      this.playerMatrix = rotateMatrix(this.playerMatrix, rotationDir);
       collision = true;
 
       for (const [dx, dy] of kickTable[key]) {
@@ -374,7 +355,7 @@ export class MainGame extends Scene {
       }
 
       if (collision) {
-        this.playerMatrix = this.rotate(this.playerMatrix, rotationDir === "CW" ? "CCW" : "CW");
+        this.playerMatrix = rotateMatrix(this.playerMatrix, rotationDir === "CW" ? "CCW" : "CW");
         this.playerRotation = prevRotation;
       }
     }
@@ -525,14 +506,34 @@ export class MainGame extends Scene {
     });
   }
 
+  lockPiece() {
+    this.inputLocked = true;
+    const added = this.addPlayerToGrid();
+    if (!added) {
+      this.renderPlayerSprite();
+      this.gameOver = true;
+    }
+    this.clearCompletedLines(() => {
+      this.downKeyReleased = false;
+    });
+  }
+
   handleVerticalMove(time: number) {
     if (this.cursors?.down.isDown) {
+      if (!this.downKeyReleased) {
+        // Block soft drop if the down key hasn't been released
+        return;
+      }
       if (this.downKeyPressTime === 0) {
+        this.lastUpdateTime = time; // Reset timer so we don’t double drop
         // First press
         this.downKeyPressTime = time;
         this.softDropping = false; // Single drop
-        this.renderPlayer("down"); // Immediate single drop
-        this.lastUpdateTime = time; // Reset timer so we don’t double drop
+        const collision = this.renderPlayer("down"); // Immediate single drop
+        if (collision) {
+          this.lockPiece(); // Lock the piece immediately if it collides
+          return;
+        }
       } else if (time - this.downKeyPressTime > this.softDropDelay) {
         this.softDropping = true; // Begin fast drop after delay
       }
@@ -540,6 +541,7 @@ export class MainGame extends Scene {
       // Key released
       this.downKeyPressTime = 0;
       this.softDropping = false;
+      this.downKeyReleased = true; // Mark the key as released
     }
 
     const currentSpeed = this.softDropping ? this.softDropSpeed : this.gameSpeed;
@@ -548,15 +550,9 @@ export class MainGame extends Scene {
       this.lastUpdateTime = time;
       const collision = this.renderPlayer("down");
       if (collision) {
-        const added = this.addPlayerToGrid();
-        if (!added) {
-          this.playerRow += 1;
-          this.renderPlayerSprite();
-          this.gameOver = true;
-        }
-        this.clearCompletedLines();
+        this.lockPiece();
       }
-      // this.consoleLogGrid();
+      // consoleLogGrid(this.grid);
     }
   }
 
@@ -581,34 +577,8 @@ export class MainGame extends Scene {
       return;
     }
 
-    this.handleVerticalMove(time);
     this.handleHorizontalMove(time);
+    this.handleVerticalMove(time);
     this.handleRotationalMove();
-  }
-
-  consoleLogGrid() {
-    // console.clear();
-    console.log({
-      X: this.playerRow,
-      Y: this.playerCol,
-      R: this.playerRotation,
-      matrix: this.playerMatrix,
-    });
-    let gridString = "";
-    for (let row = 0; row < this.grid.length; row++) {
-      if (row === 0) {
-        gridString += "    ";
-        for (let col = 0; col < this.grid[row].length; col++) {
-          gridString += String(col) + "   ";
-        }
-        gridString += "\n";
-      }
-      gridString += `${String(row).padStart(2, " ")}: `;
-      for (let col = 0; col < this.grid[row].length; col++) {
-        gridString += String(this.grid[row][col] ? "#" : ".") + "   ";
-      }
-      gridString += "\n";
-    }
-    console.log(gridString);
   }
 }
