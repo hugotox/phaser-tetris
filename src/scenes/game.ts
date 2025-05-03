@@ -7,6 +7,8 @@ import {
   I_KICK_TABLE,
   JLSTZ_KICK_TABLE,
   KickTableKey,
+  LINES_MULTIPLIER,
+  NUMBER_OF_NEXT_BLOCKS,
   RotationDirection,
   RotationType,
   ROWS,
@@ -55,6 +57,13 @@ export class MainGame extends Scene {
   pieceGenerator = new PieceGenerator(BlockTypes as BlockTypesType[]);
   nextPieces: BlockTypesType[] = [];
   nextPiecesSprites: Phaser.GameObjects.Sprite[] = [];
+  score = 0;
+  level = 0;
+  initialLevel = 0;
+  totalLines = 0;
+  scoreText: Phaser.GameObjects.BitmapText | null = null;
+  levelText: Phaser.GameObjects.BitmapText | null = null;
+  linesText: Phaser.GameObjects.BitmapText | null = null;
 
   constructor() {
     super("Game");
@@ -72,10 +81,14 @@ export class MainGame extends Scene {
   }
 
   create() {
+    this.score = 0;
+    this.lastUpdateTime = 0;
+    this.level = this.initialLevel;
+    this.gameSpeed = Math.max(100, 1000 - this.level * 50);
+
     this.setupWorld();
     this.setupMusic();
 
-    this.lastUpdateTime = 0;
     this.cursors = this.input.keyboard?.createCursorKeys();
     this.zKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
     // this.spaceKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
@@ -98,11 +111,9 @@ export class MainGame extends Scene {
   }
 
   setupWorld() {
-    // this.add.image(0, 0, "background").setOrigin(0, 0);
-
     const playAreaWidth = 10 * UNIT * BLOCK_SCALE;
     const playAreaHeight = 20 * UNIT * BLOCK_SCALE;
-    this.playAreaX = (this.cameras.main.width - playAreaWidth) / 2;
+    this.playAreaX = 20;
 
     console.log({ playAreaWidth, playAreaHeight });
 
@@ -122,32 +133,65 @@ export class MainGame extends Scene {
       .rectangle(
         this.playAreaX + playAreaWidth + 20,
         this.playAreaY,
-        200,
+        150,
         10 * UNIT * BLOCK_SCALE + UNIT / 2,
         0x000000,
       )
       .setOrigin(0, 0);
 
+    // "Score" text
     this.add
-      .bitmapText(this.playAreaX + playAreaWidth + 40, this.playAreaY + 20, "arcade", "Next", 22)
+      .bitmapText(this.playAreaX + playAreaWidth + 40, this.playAreaY + 20, "arcade", "Score", 18)
       .setOrigin(0, 0)
       .setTint(0xffe066);
-
-    // score area background
-    this.add
-      .rectangle(
-        this.playAreaX - 200 - 20,
-        this.playAreaY,
-        200,
-        10 * UNIT * BLOCK_SCALE + UNIT / 2,
-        0x000000,
+    this.scoreText = this.add
+      .bitmapText(
+        this.playAreaX + playAreaWidth + 40,
+        this.playAreaY + 45,
+        "arcade",
+        String(this.score),
+        18,
       )
-      .setOrigin(0, 0);
+      .setOrigin(0, 0)
+      .setTint(0xffffff);
 
+    // "Next" text
     this.add
-      .bitmapText(this.playAreaX - 200, this.playAreaY + 20, "arcade", "Score", 22)
+      .bitmapText(this.playAreaX + playAreaWidth + 40, this.playAreaY + 80, "arcade", "Next", 18)
       .setOrigin(0, 0)
       .setTint(0xffe066);
+
+    // "Level" text
+    this.add
+      .bitmapText(this.playAreaX + playAreaWidth + 40, this.playAreaY + 200, "arcade", "Level", 18)
+      .setOrigin(0, 0)
+      .setTint(0xffe066);
+    this.levelText = this.add
+      .bitmapText(
+        this.playAreaX + playAreaWidth + 40,
+        this.playAreaY + 225,
+        "arcade",
+        String(this.level),
+        18,
+      )
+      .setOrigin(0, 0)
+      .setTint(0xffffff);
+
+    // "Lines" text
+    this.add
+      .bitmapText(this.playAreaX + playAreaWidth + 40, this.playAreaY + 260, "arcade", "Lines", 18)
+      .setOrigin(0, 0)
+      .setTint(0xffe066);
+    this.linesText = this.add
+      .bitmapText(
+        this.playAreaX + playAreaWidth + 40,
+        this.playAreaY + 285,
+        "arcade",
+        String(this.totalLines),
+        18,
+      )
+      .setOrigin(0, 0)
+      .setTint(0xffffff);
 
     if (this.showGridLines) {
       for (let i = 1; i < COLUMNS; i++) {
@@ -206,6 +250,21 @@ export class MainGame extends Scene {
     return true;
   }
 
+  updateScore(lines: number) {
+    if (lines > 0) {
+      this.totalLines += lines;
+      this.score += LINES_MULTIPLIER[lines - 1] * (this.level + 1);
+      this.level = Math.floor(this.totalLines / 10) + this.initialLevel;
+      this.gameSpeed = Math.max(100, 1000 - this.level * 150);
+
+      this.scoreText?.setText(`${this.score}`);
+      this.levelText?.setText(`${this.level}`);
+      this.linesText?.setText(`${this.totalLines}`);
+
+      // this.events.emit("scoreUpdated", this.score, this.level);
+    }
+  }
+
   clearCompletedLines(callback?: () => void) {
     let lines = 0;
     const deleteRowIndices: number[] = [];
@@ -221,6 +280,8 @@ export class MainGame extends Scene {
         deleteRowIndices.push(i);
       }
     }
+
+    this.updateScore(lines);
 
     this.pauseGame = true;
 
@@ -341,6 +402,14 @@ export class MainGame extends Scene {
       this.playerSprite.setFrame(sprite);
       this.playerSprite.setX(newX * UNIT * BLOCK_SCALE + this.playAreaX);
       this.playerSprite.setY(newY * UNIT * BLOCK_SCALE + this.playAreaY);
+
+      // this.tweens.add({
+      //   targets: this.playerSprite,
+      //   x: newX * UNIT * BLOCK_SCALE + this.playAreaX,
+      //   y: newY * UNIT * BLOCK_SCALE + this.playAreaY,
+      //   duration: 100,
+      //   ease: "Sine.easeInOut", // or 'Sine.easeInOut', 'Power2', etc.
+      // });
     }
   }
 
@@ -625,8 +694,8 @@ export class MainGame extends Scene {
   }
 
   renderNextPieces() {
-    if (this.nextPieces.length < 1) {
-      while (this.nextPieces.length < 1) {
+    if (this.nextPieces.length < NUMBER_OF_NEXT_BLOCKS) {
+      while (this.nextPieces.length < NUMBER_OF_NEXT_BLOCKS) {
         this.nextPieces.push(this.pieceGenerator.generatePiece());
       }
       this.nextPiecesSprites.forEach((s) => s.destroy());
@@ -635,8 +704,8 @@ export class MainGame extends Scene {
         const sprite = `${this.nextPieces[i]}-0`;
         this.nextPiecesSprites.push(
           this.add
-            .sprite(this.playAreaX + playAreaWidth + 80, 90 + 80 * i, "tetrominos", sprite)
-            .setScale(0.8)
+            .sprite(this.playAreaX + playAreaWidth + 40, 130 + 80 * i, "tetrominos", sprite)
+            .setScale(0.7)
             .setOrigin(0, 0),
         );
       }

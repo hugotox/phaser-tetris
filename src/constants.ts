@@ -1,9 +1,11 @@
-export const GAME_WIDTH = 800;
+export const GAME_WIDTH = 530;
 export const GAME_HEIGHT = 680;
 export const UNIT = 8;
 export const COLUMNS = 10;
 export const ROWS = 20;
 export const BLOCK_SCALE = 4;
+export const NUMBER_OF_NEXT_BLOCKS = 1;
+export const LINES_MULTIPLIER = [40, 100, 300, 1200];
 
 export const TETROMINOES = {
   T: [
