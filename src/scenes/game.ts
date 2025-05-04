@@ -67,11 +67,11 @@ export class MainGame extends Scene {
   levelText: Phaser.GameObjects.BitmapText | null = null;
   linesText: Phaser.GameObjects.BitmapText | null = null;
 
-  btnLeft: Phaser.GameObjects.Arc | null = null;
+  btnLeft: Phaser.GameObjects.Image | null = null;
   btnLeftPressed = false;
-  btnRight: Phaser.GameObjects.Arc | null = null;
+  btnRight: Phaser.GameObjects.Image | null = null;
   btnRightPressed = false;
-  btnDrop: Phaser.GameObjects.Arc | null = null;
+  btnDrop: Phaser.GameObjects.Image | null = null;
   btnDropPressed = false;
   btnRotate: Phaser.GameObjects.Arc | null = null;
 
@@ -87,6 +87,9 @@ export class MainGame extends Scene {
     });
     this.load.audio("tetrisMusic", tetrisMusic);
     this.load.image("background", "assets/background.png");
+    this.load.image("btnLeft", "assets/btn-left.png");
+    this.load.image("btnRight", "assets/btn-right.png");
+    this.load.image("btnDown", "assets/btn-down.png");
     this.load.bitmapFont("arcade", "assets/arcade.png", "assets/arcade.xml");
   }
 
@@ -202,9 +205,8 @@ export class MainGame extends Scene {
       .setOrigin(0, 0)
       .setTint(0xffffff);
 
-    // "left" button
     this.btnLeft = this.add
-      .circle(this.playAreaX + 10, playAreaHeight + 50, 60, 0xff0000)
+      .image(this.playAreaX + 10, playAreaHeight + 50, "btnLeft")
       .setOrigin(0, 0)
       .setInteractive();
     this.btnLeft.on("pointerdown", () => {
@@ -216,7 +218,7 @@ export class MainGame extends Scene {
 
     // "right" button
     this.btnRight = this.add
-      .circle(this.playAreaX + 170, playAreaHeight + 50, 60, 0x00ff00)
+      .image(this.playAreaX + 170, playAreaHeight + 50, "btnRight")
       .setOrigin(0, 0)
       .setInteractive();
     this.btnRight.on("pointerdown", () => {
@@ -228,7 +230,7 @@ export class MainGame extends Scene {
 
     // "drop" button
     this.btnDrop = this.add
-      .circle(this.playAreaX + 90, playAreaHeight + 160, 60, 0x0000ff)
+      .image(this.playAreaX + 90, playAreaHeight + 160, "btnDown")
       .setOrigin(0, 0)
       .setInteractive();
     this.btnDrop.on("pointerdown", () => {
