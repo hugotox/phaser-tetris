@@ -126,8 +126,6 @@ export class MainGame extends Scene {
     const playAreaHeight = 20 * UNIT * BLOCK_SCALE;
     this.playAreaX = 20;
 
-    console.log({ playAreaWidth, playAreaHeight });
-
     // play area background:
     this.add
       .rectangle(
@@ -206,7 +204,7 @@ export class MainGame extends Scene {
 
     // "left" button
     this.btnLeft = this.add
-      .circle(this.playAreaX + 10, playAreaHeight + 50, 50, 0xff0000)
+      .circle(this.playAreaX + 10, playAreaHeight + 50, 60, 0xff0000)
       .setOrigin(0, 0)
       .setInteractive();
     this.btnLeft.on("pointerdown", () => {
@@ -218,7 +216,7 @@ export class MainGame extends Scene {
 
     // "right" button
     this.btnRight = this.add
-      .circle(this.playAreaX + 150, playAreaHeight + 50, 50, 0x00ff00)
+      .circle(this.playAreaX + 170, playAreaHeight + 50, 60, 0x00ff00)
       .setOrigin(0, 0)
       .setInteractive();
     this.btnRight.on("pointerdown", () => {
@@ -230,7 +228,7 @@ export class MainGame extends Scene {
 
     // "drop" button
     this.btnDrop = this.add
-      .circle(this.playAreaX + 75, playAreaHeight + 140, 50, 0x0000ff)
+      .circle(this.playAreaX + 90, playAreaHeight + 160, 60, 0x0000ff)
       .setOrigin(0, 0)
       .setInteractive();
     this.btnDrop.on("pointerdown", () => {
