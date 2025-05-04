@@ -1,5 +1,5 @@
 export const GAME_WIDTH = 530;
-export const GAME_HEIGHT = 680;
+export const GAME_HEIGHT = 900;
 export const UNIT = 8;
 export const COLUMNS = 10;
 export const ROWS = 20;

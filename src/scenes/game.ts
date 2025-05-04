@@ -18,12 +18,14 @@ import {
 import { PieceGenerator } from "../lib/PieceGenerator";
 import tetrisMusic from "../lib/tetris-theme.mp3";
 import { getNextRotation, rotateMatrix } from "../lib/utils";
+import { GravityManager } from "../lib/GravityManager";
 
 export class MainGame extends Scene {
   playAreaX = 0; // set in setupWorld
   playAreaY = 20;
   lastUpdateTime = 0;
-  gameSpeed = 1000;
+  gravity: GravityManager | null = null;
+  gameSpeed = -1;
   softDropSpeed = 20;
   downKeyPressTime = 0;
   softDropping = false;
@@ -65,6 +67,14 @@ export class MainGame extends Scene {
   levelText: Phaser.GameObjects.BitmapText | null = null;
   linesText: Phaser.GameObjects.BitmapText | null = null;
 
+  btnLeft: Phaser.GameObjects.Arc | null = null;
+  btnLeftPressed = false;
+  btnRight: Phaser.GameObjects.Arc | null = null;
+  btnRightPressed = false;
+  btnDrop: Phaser.GameObjects.Arc | null = null;
+  btnDropPressed = false;
+  btnRotate: Phaser.GameObjects.Arc | null = null;
+
   constructor() {
     super("Game");
   }
@@ -84,7 +94,8 @@ export class MainGame extends Scene {
     this.score = 0;
     this.lastUpdateTime = 0;
     this.level = this.initialLevel;
-    this.gameSpeed = Math.max(100, 1000 - this.level * 50);
+    this.gravity = new GravityManager(this.initialLevel);
+    this.gameSpeed = this.gravity.currentSpeed;
 
     this.setupWorld();
     this.setupMusic();
@@ -193,6 +204,51 @@ export class MainGame extends Scene {
       .setOrigin(0, 0)
       .setTint(0xffffff);
 
+    // "left" button
+    this.btnLeft = this.add
+      .circle(this.playAreaX + 10, playAreaHeight + 50, 50, 0xff0000)
+      .setOrigin(0, 0)
+      .setInteractive();
+    this.btnLeft.on("pointerdown", () => {
+      this.btnLeftPressed = true;
+    });
+    this.btnLeft.on("pointerup", () => {
+      this.btnLeftPressed = false;
+    });
+
+    // "right" button
+    this.btnRight = this.add
+      .circle(this.playAreaX + 150, playAreaHeight + 50, 50, 0x00ff00)
+      .setOrigin(0, 0)
+      .setInteractive();
+    this.btnRight.on("pointerdown", () => {
+      this.btnRightPressed = true;
+    });
+    this.btnRight.on("pointerup", () => {
+      this.btnRightPressed = false;
+    });
+
+    // "drop" button
+    this.btnDrop = this.add
+      .circle(this.playAreaX + 75, playAreaHeight + 140, 50, 0x0000ff)
+      .setOrigin(0, 0)
+      .setInteractive();
+    this.btnDrop.on("pointerdown", () => {
+      this.btnDropPressed = true;
+    });
+    this.btnDrop.on("pointerup", () => {
+      this.btnDropPressed = false;
+    });
+
+    // "rotate" button
+    this.btnRotate = this.add
+      .circle(this.playAreaX + 340, playAreaHeight + 50, 70, 0xffff00)
+      .setOrigin(0, 0)
+      .setInteractive();
+    this.btnRotate.on("pointerdown", () => {
+      this.renderPlayer("rotate", "CW");
+    });
+
     if (this.showGridLines) {
       for (let i = 1; i < COLUMNS; i++) {
         const x = UNIT * BLOCK_SCALE * i;
@@ -255,7 +311,11 @@ export class MainGame extends Scene {
       this.totalLines += lines;
       this.score += LINES_MULTIPLIER[lines - 1] * (this.level + 1);
       this.level = Math.floor(this.totalLines / 10) + this.initialLevel;
-      this.gameSpeed = Math.max(100, 1000 - this.level * 150);
+
+      if (this.gravity) {
+        this.gravity.addClearedLines(lines);
+        this.gameSpeed = this.gravity.currentSpeed;
+      }
 
       this.scoreText?.setText(`${this.score}`);
       this.levelText?.setText(`${this.level}`);
@@ -402,14 +462,6 @@ export class MainGame extends Scene {
       this.playerSprite.setFrame(sprite);
       this.playerSprite.setX(newX * UNIT * BLOCK_SCALE + this.playAreaX);
       this.playerSprite.setY(newY * UNIT * BLOCK_SCALE + this.playAreaY);
-
-      // this.tweens.add({
-      //   targets: this.playerSprite,
-      //   x: newX * UNIT * BLOCK_SCALE + this.playAreaX,
-      //   y: newY * UNIT * BLOCK_SCALE + this.playAreaY,
-      //   duration: 100,
-      //   ease: "Sine.easeInOut", // or 'Sine.easeInOut', 'Power2', etc.
-      // });
     }
   }
 
@@ -553,8 +605,8 @@ export class MainGame extends Scene {
   }
 
   handleHorizontalMove(time: number) {
-    const leftPressed = this.cursors?.left.isDown;
-    const rightPressed = this.cursors?.right.isDown;
+    const leftPressed = this.cursors?.left.isDown || this.btnLeftPressed;
+    const rightPressed = this.cursors?.right.isDown || this.btnRightPressed;
 
     if (leftPressed || rightPressed) {
       const dir = leftPressed ? "left" : "right";
@@ -640,7 +692,7 @@ export class MainGame extends Scene {
   }
 
   handleVerticalMove(time: number) {
-    if (this.cursors?.down.isDown) {
+    if (this.cursors?.down.isDown || this.btnDropPressed) {
       if (!this.downKeyReleased) {
         // Block soft drop if the down key hasn't been released
         return;
