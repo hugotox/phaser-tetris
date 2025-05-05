@@ -215,6 +215,12 @@ export class MainGame extends Scene {
     this.btnLeft.on("pointerup", () => {
       this.btnLeftPressed = false;
     });
+    this.btnLeft.on("pointerout", () => {
+      this.btnLeftPressed = false;
+    });
+    this.btnLeft.on("pointerupoutside", () => {
+      this.btnLeftPressed = false;
+    });
 
     // "right" button
     this.btnRight = this.add
@@ -227,6 +233,12 @@ export class MainGame extends Scene {
     this.btnRight.on("pointerup", () => {
       this.btnRightPressed = false;
     });
+    this.btnRight.on("pointerout", () => {
+      this.btnRightPressed = false;
+    });
+    this.btnRight.on("pointerupoutside", () => {
+      this.btnRightPressed = false;
+    });
 
     // "drop" button
     this.btnDrop = this.add
@@ -237,6 +249,12 @@ export class MainGame extends Scene {
       this.btnDropPressed = true;
     });
     this.btnDrop.on("pointerup", () => {
+      this.btnDropPressed = false;
+    });
+    this.btnDrop.on("pointerout", () => {
+      this.btnDropPressed = false;
+    });
+    this.btnDrop.on("pointerupoutside", () => {
       this.btnDropPressed = false;
     });
 
