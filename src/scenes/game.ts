@@ -73,7 +73,7 @@ export class MainGame extends Scene {
   btnRightPressed = false;
   btnDrop: Phaser.GameObjects.Image | null = null;
   btnDropPressed = false;
-  btnRotate: Phaser.GameObjects.Arc | null = null;
+  btnRotate: Phaser.GameObjects.Image | null = null;
 
   constructor() {
     super("Game");
@@ -88,8 +88,7 @@ export class MainGame extends Scene {
     this.load.audio("tetrisMusic", tetrisMusic);
     this.load.image("background", "assets/background.png");
     this.load.image("btnLeft", "assets/btn-left.png");
-    this.load.image("btnRight", "assets/btn-right.png");
-    this.load.image("btnDown", "assets/btn-down.png");
+    this.load.image("btnRotate", "assets/btn-rotate.png");
     this.load.bitmapFont("arcade", "assets/arcade.png", "assets/arcade.xml");
   }
 
@@ -206,8 +205,8 @@ export class MainGame extends Scene {
       .setTint(0xffffff);
 
     this.btnLeft = this.add
-      .image(this.playAreaX + 10, playAreaHeight + 50, "btnLeft")
-      .setOrigin(0, 0)
+      .image(this.playAreaX + 60, playAreaHeight + 110, "btnLeft")
+      // .setOrigin(0, 0)
       .setInteractive();
     this.btnLeft.on("pointerdown", () => {
       this.btnLeftPressed = true;
@@ -224,8 +223,9 @@ export class MainGame extends Scene {
 
     // "right" button
     this.btnRight = this.add
-      .image(this.playAreaX + 170, playAreaHeight + 50, "btnRight")
-      .setOrigin(0, 0)
+      .image(this.playAreaX + 250, playAreaHeight + 110, "btnLeft")
+      // .setOrigin(0, 0)
+      .setRotation(Math.PI)
       .setInteractive();
     this.btnRight.on("pointerdown", () => {
       this.btnRightPressed = true;
@@ -242,8 +242,9 @@ export class MainGame extends Scene {
 
     // "drop" button
     this.btnDrop = this.add
-      .image(this.playAreaX + 90, playAreaHeight + 160, "btnDown")
-      .setOrigin(0, 0)
+      .image(this.playAreaX + 155, playAreaHeight + 220, "btnLeft")
+      // .setOrigin(0, 0)
+      .setRotation((Math.PI / 2) * -1)
       .setInteractive();
     this.btnDrop.on("pointerdown", () => {
       this.btnDropPressed = true;
@@ -260,7 +261,7 @@ export class MainGame extends Scene {
 
     // "rotate" button
     this.btnRotate = this.add
-      .circle(this.playAreaX + 340, playAreaHeight + 50, 70, 0xffff00)
+      .image(this.playAreaX + 340, playAreaHeight + 50, "btnRotate")
       .setOrigin(0, 0)
       .setInteractive();
     this.btnRotate.on("pointerdown", () => {
