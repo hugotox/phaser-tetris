@@ -69,6 +69,8 @@ export class MainGame extends Scene {
 
   dragStartX: number | null = null; // for touch controls
   dragAccumX: number = 0; // for touch controls
+  dragStartY: number | null = null;
+  dragAccumY = 0;
 
   constructor() {
     super("Game");
@@ -224,6 +226,8 @@ export class MainGame extends Scene {
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
       this.dragStartX = pointer.x;
       this.dragAccumX = 0;
+      this.dragStartY = pointer.y;
+      this.dragAccumY = 0;
     });
 
     this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => {
@@ -242,6 +246,18 @@ export class MainGame extends Scene {
         }
 
         this.dragStartX = pointer.x;
+      }
+
+      if (this.dragStartY !== null) {
+        const deltaY = pointer.y - this.dragStartY;
+        this.dragAccumY += deltaY;
+
+        while (this.dragAccumY >= MOVE_STEP) {
+          this.renderPlayer("down");
+          this.dragAccumY -= MOVE_STEP;
+        }
+
+        this.dragStartY = pointer.y;
       }
     });
 
@@ -272,11 +288,22 @@ export class MainGame extends Scene {
     this.input.on("pointerup", (pointer: Phaser.Input.Pointer) => {
       const deltaY = pointer.upY - pointer.downY;
       const deltaX = Math.abs(pointer.upX - pointer.downX);
-      const swipeThreshold = 50;
+      const duration = pointer.upTime - pointer.downTime;
 
-      if (deltaY > swipeThreshold && deltaY > deltaX) {
+      const SWIPE_THRESHOLD_Y = 100; // pixels
+      const SWIPE_MAX_DURATION = 200; // ms
+
+      const isFastSwipeDown =
+        deltaY > SWIPE_THRESHOLD_Y && deltaY > deltaX && duration < SWIPE_MAX_DURATION;
+
+      if (isFastSwipeDown) {
         this.handleHardDrop();
+      } else {
+        // Optional: snap piece down one more time if needed?
       }
+
+      this.dragStartY = null;
+      this.dragAccumY = 0;
     });
   }
 
