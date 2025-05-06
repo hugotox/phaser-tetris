@@ -67,13 +67,8 @@ export class MainGame extends Scene {
   levelText: Phaser.GameObjects.BitmapText | null = null;
   linesText: Phaser.GameObjects.BitmapText | null = null;
 
-  btnLeft: Phaser.GameObjects.Image | null = null;
-  btnLeftPressed = false;
-  btnRight: Phaser.GameObjects.Image | null = null;
-  btnRightPressed = false;
-  btnDrop: Phaser.GameObjects.Image | null = null;
-  btnDropPressed = false;
-  btnRotate: Phaser.GameObjects.Image | null = null;
+  dragStartX: number | null = null; // for touch controls
+  dragAccumX: number = 0; // for touch controls
 
   constructor() {
     super("Game");
@@ -101,6 +96,9 @@ export class MainGame extends Scene {
 
     this.setupWorld();
     this.setupMusic();
+    if (!this.sys.game.device.os.desktop) {
+      this.createTouchButtons();
+    }
 
     this.cursors = this.input.keyboard?.createCursorKeys();
     this.zKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
@@ -125,7 +123,6 @@ export class MainGame extends Scene {
 
   setupWorld() {
     const playAreaWidth = 10 * UNIT * BLOCK_SCALE;
-    const playAreaHeight = 20 * UNIT * BLOCK_SCALE;
     this.playAreaX = 20;
 
     // play area background:
@@ -204,70 +201,6 @@ export class MainGame extends Scene {
       .setOrigin(0, 0)
       .setTint(0xffffff);
 
-    this.btnLeft = this.add
-      .image(this.playAreaX + 60, playAreaHeight + 110, "btnLeft")
-      // .setOrigin(0, 0)
-      .setInteractive();
-    this.btnLeft.on("pointerdown", () => {
-      this.btnLeftPressed = true;
-    });
-    this.btnLeft.on("pointerup", () => {
-      this.btnLeftPressed = false;
-    });
-    this.btnLeft.on("pointerout", () => {
-      this.btnLeftPressed = false;
-    });
-    this.btnLeft.on("pointerupoutside", () => {
-      this.btnLeftPressed = false;
-    });
-
-    // "right" button
-    this.btnRight = this.add
-      .image(this.playAreaX + 250, playAreaHeight + 110, "btnLeft")
-      // .setOrigin(0, 0)
-      .setRotation(Math.PI)
-      .setInteractive();
-    this.btnRight.on("pointerdown", () => {
-      this.btnRightPressed = true;
-    });
-    this.btnRight.on("pointerup", () => {
-      this.btnRightPressed = false;
-    });
-    this.btnRight.on("pointerout", () => {
-      this.btnRightPressed = false;
-    });
-    this.btnRight.on("pointerupoutside", () => {
-      this.btnRightPressed = false;
-    });
-
-    // "drop" button
-    this.btnDrop = this.add
-      .image(this.playAreaX + 155, playAreaHeight + 220, "btnLeft")
-      // .setOrigin(0, 0)
-      .setRotation((Math.PI / 2) * -1)
-      .setInteractive();
-    this.btnDrop.on("pointerdown", () => {
-      this.btnDropPressed = true;
-    });
-    this.btnDrop.on("pointerup", () => {
-      this.btnDropPressed = false;
-    });
-    this.btnDrop.on("pointerout", () => {
-      this.btnDropPressed = false;
-    });
-    this.btnDrop.on("pointerupoutside", () => {
-      this.btnDropPressed = false;
-    });
-
-    // "rotate" button
-    this.btnRotate = this.add
-      .image(this.playAreaX + 340, playAreaHeight + 50, "btnRotate")
-      .setOrigin(0, 0)
-      .setInteractive();
-    this.btnRotate.on("pointerdown", () => {
-      this.renderPlayer("rotate", "CW");
-    });
-
     if (this.showGridLines) {
       for (let i = 1; i < COLUMNS; i++) {
         const x = UNIT * BLOCK_SCALE * i;
@@ -282,6 +215,69 @@ export class MainGame extends Scene {
           .setOrigin(0, 0);
       }
     }
+  }
+
+  createTouchButtons() {
+    // ---- move ------
+    const MOVE_STEP = UNIT * BLOCK_SCALE;
+
+    this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+      this.dragStartX = pointer.x;
+      this.dragAccumX = 0;
+    });
+
+    this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => {
+      if (this.dragStartX !== null) {
+        const deltaX = pointer.x - this.dragStartX;
+        this.dragAccumX += deltaX;
+
+        while (this.dragAccumX >= MOVE_STEP) {
+          this.renderPlayer("right");
+          this.dragAccumX -= MOVE_STEP;
+        }
+
+        while (this.dragAccumX <= -MOVE_STEP) {
+          this.renderPlayer("left");
+          this.dragAccumX += MOVE_STEP;
+        }
+
+        this.dragStartX = pointer.x;
+      }
+    });
+
+    this.input.on("pointerup", () => {
+      this.dragStartX = null;
+      this.dragAccumX = 0;
+    });
+
+    // ----- rotate ------
+    this.input.on("pointerup", (pointer: Phaser.Input.Pointer) => {
+      const tapThreshold = 200; // ms
+      const moveThreshold = 10; // px
+
+      const duration = pointer.upTime - pointer.downTime;
+      const moved = Phaser.Math.Distance.Between(
+        pointer.downX,
+        pointer.downY,
+        pointer.upX,
+        pointer.upY,
+      );
+
+      if (duration < tapThreshold && moved < moveThreshold) {
+        this.renderPlayer("rotate", "CW");
+      }
+    });
+
+    // ----- hard drop ------
+    this.input.on("pointerup", (pointer: Phaser.Input.Pointer) => {
+      const deltaY = pointer.upY - pointer.downY;
+      const deltaX = Math.abs(pointer.upX - pointer.downX);
+      const swipeThreshold = 50;
+
+      if (deltaY > swipeThreshold && deltaY > deltaX) {
+        this.handleHardDrop();
+      }
+    });
   }
 
   checkCollision() {
@@ -624,8 +620,8 @@ export class MainGame extends Scene {
   }
 
   handleHorizontalMove(time: number) {
-    const leftPressed = this.cursors?.left.isDown || this.btnLeftPressed;
-    const rightPressed = this.cursors?.right.isDown || this.btnRightPressed;
+    const leftPressed = this.cursors?.left.isDown;
+    const rightPressed = this.cursors?.right.isDown;
 
     if (leftPressed || rightPressed) {
       const dir = leftPressed ? "left" : "right";
@@ -711,7 +707,7 @@ export class MainGame extends Scene {
   }
 
   handleVerticalMove(time: number) {
-    if (this.cursors?.down.isDown || this.btnDropPressed) {
+    if (this.cursors?.down.isDown) {
       if (!this.downKeyReleased) {
         // Block soft drop if the down key hasn't been released
         return;
