@@ -113,7 +113,6 @@ export class MainGame extends Scene {
     });
 
     this.nextPieces.push(this.pieceGenerator.generatePiece());
-
     this.newBlock();
   }
 
@@ -151,7 +150,7 @@ export class MainGame extends Scene {
 
     // "Score" text
     this.add
-      .bitmapText(this.playAreaX + playAreaWidth + 40, this.playAreaY + 20, "arcade", "Score", 18)
+      .bitmapText(this.playAreaX + playAreaWidth + 40, this.playAreaY + 20, "arcade", "SCORE", 18)
       .setOrigin(0, 0)
       .setTint(0xffe066);
     this.scoreText = this.add
@@ -167,13 +166,13 @@ export class MainGame extends Scene {
 
     // "Next" text
     this.add
-      .bitmapText(this.playAreaX + playAreaWidth + 40, this.playAreaY + 80, "arcade", "Next", 18)
+      .bitmapText(this.playAreaX + playAreaWidth + 40, this.playAreaY + 80, "arcade", "NEXT", 18)
       .setOrigin(0, 0)
       .setTint(0xffe066);
 
     // "Level" text
     this.add
-      .bitmapText(this.playAreaX + playAreaWidth + 40, this.playAreaY + 200, "arcade", "Level", 18)
+      .bitmapText(this.playAreaX + playAreaWidth + 40, this.playAreaY + 200, "arcade", "LEVEL", 18)
       .setOrigin(0, 0)
       .setTint(0xffe066);
     this.levelText = this.add
@@ -189,7 +188,7 @@ export class MainGame extends Scene {
 
     // "Lines" text
     this.add
-      .bitmapText(this.playAreaX + playAreaWidth + 40, this.playAreaY + 260, "arcade", "Lines", 18)
+      .bitmapText(this.playAreaX + playAreaWidth + 40, this.playAreaY + 260, "arcade", "LINES", 18)
       .setOrigin(0, 0)
       .setTint(0xffe066);
     this.linesText = this.add
@@ -362,8 +361,48 @@ export class MainGame extends Scene {
       this.scoreText?.setText(`${this.score}`);
       this.levelText?.setText(`${this.level}`);
       this.linesText?.setText(`${this.totalLines}`);
+    }
+  }
 
-      // this.events.emit("scoreUpdated", this.score, this.level);
+  animateLineClear(row: number) {
+    const blocks: Phaser.GameObjects.Sprite[] = [];
+
+    // Create 10 blocks for the cleared line
+    for (let col = 0; col < COLUMNS; col++) {
+      const block = this.add
+        .sprite(
+          col * UNIT * BLOCK_SCALE + this.playAreaX,
+          row * UNIT * BLOCK_SCALE + this.playAreaY,
+          "tiles",
+          15 * 7 + 14,
+        )
+        .setOrigin(0, 0)
+        .setDepth(10);
+
+      blocks.push(block);
+
+      // Add a tween animation for each block
+      this.tweens.add({
+        targets: block,
+        alpha: 0, // Fade out
+        scale: 1.5, // Scale up
+        x: Phaser.Math.Clamp(
+          block.x - block.displayWidth * 0.5 * (1.5 - 1),
+          this.playAreaX,
+          this.playAreaX + COLUMNS * UNIT * BLOCK_SCALE - block.displayWidth * 1.5,
+        ), // Clamp X to stay within the play area
+        y: Phaser.Math.Clamp(
+          block.y - block.displayHeight * 0.5 * (1.5 - 1),
+          this.playAreaY,
+          this.playAreaY + ROWS * UNIT * BLOCK_SCALE - block.displayHeight * 1.5,
+        ), // Clamp Y to stay within the play area
+        duration: 10, // Animation duration in milliseconds
+        delay: col * 10,
+        ease: "Cubic.easeOut",
+        onComplete: () => {
+          block.destroy(); // Destroy the block after the animation
+        },
+      });
     }
   }
 
@@ -385,37 +424,48 @@ export class MainGame extends Scene {
 
     this.updateScore(lines);
 
+    deleteRowIndices.forEach((row) => {
+      for (let i = 0; i < COLUMNS; i++) {
+        // update the row above the cleared row to make all blocks to not have bottom connection
+        if (Array.isArray(this.grid[row - 1][i]) && this.grid[row - 1][i].length === 4) {
+          // mark bottom as not connected:
+          const origValue = this.grid[row - 1][i].flat().filter(Boolean)[0];
+          this.grid[row - 1][i][2] = 0;
+
+          if (this.grid[row - 1][i].flat().filter(Boolean).length === 0) {
+            this.grid[row - 1][i] = [origValue];
+          }
+        }
+
+        // update the row below the cleared row to make all blocks to not have top connection
+        if (Array.isArray(this.grid[row + 1]?.[i]) && this.grid[row + 1][i].length === 4) {
+          // mark top as not connected:
+          const origValue = this.grid[row + 1][i].flat().filter(Boolean)[0];
+          this.grid[row + 1][i][0] = 0;
+
+          if (this.grid[row + 1][i].flat().filter(Boolean).length === 0) {
+            this.grid[row + 1][i] = [origValue];
+          }
+        }
+      }
+    });
+
+    deleteRowIndices.forEach((row) => {
+      this.grid[row] = Array(COLUMNS).fill(0);
+    });
+    this.renderGridBlocks();
+    this.playerSprite?.destroy();
+    this.playerSprite = null;
+    // Animate each cleared line
+    deleteRowIndices.forEach((row) => {
+      this.animateLineClear(row);
+    });
+
     this.pauseGame = true;
 
     // if there are lines to clear, we pause for longer to show an animation
-    this.time.delayedCall(lines ? 100 + lines * 100 : 10, () => {
+    this.time.delayedCall(lines ? 140 : 10, () => {
       if (!this.gameOver) {
-        deleteRowIndices.forEach((row) => {
-          for (let i = 0; i < COLUMNS; i++) {
-            // update the row above the cleared row to make all blocks to not have bottom connection
-            if (Array.isArray(this.grid[row - 1][i]) && this.grid[row - 1][i].length === 4) {
-              // mark bottom as not connected:
-              const origValue = this.grid[row - 1][i].flat().filter(Boolean)[0];
-              this.grid[row - 1][i][2] = 0;
-
-              if (this.grid[row - 1][i].flat().filter(Boolean).length === 0) {
-                this.grid[row - 1][i] = [origValue];
-              }
-            }
-
-            // update the row below the cleared row to make all blocks to not have top connection
-            if (Array.isArray(this.grid[row + 1]?.[i]) && this.grid[row + 1][i].length === 4) {
-              // mark top as not connected:
-              const origValue = this.grid[row + 1][i].flat().filter(Boolean)[0];
-              this.grid[row + 1][i][0] = 0;
-
-              if (this.grid[row + 1][i].flat().filter(Boolean).length === 0) {
-                this.grid[row + 1][i] = [origValue];
-              }
-            }
-          }
-        });
-
         deleteRowIndices.forEach((row) => {
           this.grid.splice(row, 1);
           this.grid.unshift(Array(COLUMNS).fill(0));
@@ -443,7 +493,7 @@ export class MainGame extends Scene {
     if (!nextPiece) {
       return;
     }
-    this.playerType = nextPiece; //this.pieceGenerator.generatePiece();
+    this.playerType = nextPiece;
     this.playerRotation = "0";
     this.playerRow = 0;
     this.playerCol = 3;
@@ -579,6 +629,53 @@ export class MainGame extends Scene {
     return collision;
   }
 
+  getGridBlockColorFrame(row: number, col: number) {
+    const top = this.grid[row][col][0];
+    const right = this.grid[row][col][1];
+    const bottom = this.grid[row][col][2];
+    const left = this.grid[row][col][3];
+    let sprite = 14;
+
+    if (this.grid[row][col].length === 4) {
+      if (!top && right && !bottom && !left) {
+        sprite = 0;
+      } else if (!top && right && !bottom && left) {
+        sprite = 1;
+      } else if (!top && !right && !bottom && left) {
+        sprite = 2;
+      } else if (!top && !right && bottom && !left) {
+        sprite = 3;
+      } else if (top && !right && bottom && !left) {
+        sprite = 4;
+      } else if (top && !right && !bottom && !left) {
+        sprite = 5;
+      } else if (top && right && !bottom && left) {
+        sprite = 6;
+      } else if (top && right && bottom && !left) {
+        sprite = 7;
+      } else if (!top && right && bottom && left) {
+        sprite = 8;
+      } else if (top && !right && bottom && left) {
+        sprite = 9;
+      } else if (!top && right && bottom && !left) {
+        sprite = 10;
+      } else if (top && !right && !bottom && left) {
+        sprite = 11;
+      } else if (top && right && !bottom && !left) {
+        sprite = 12;
+      } else if (!top && !right && bottom && left) {
+        sprite = 13;
+      } else if (!top && !right && !bottom && !left) {
+        sprite = 14;
+      }
+
+      const color = (this.grid[row][col].flat().filter(Boolean)[0] ?? 8) - 1;
+      const frame = sprite + 15 * color;
+      return frame;
+    }
+    return 14;
+  }
+
   renderGridBlocks() {
     this.gridBlocks.forEach((block) => block.destroy());
 
@@ -586,55 +683,13 @@ export class MainGame extends Scene {
       for (let col = 0; col < this.grid[row].length; col++) {
         if (this.grid[row][col] !== 0) {
           if (Array.isArray(this.grid[row][col])) {
-            //
-            const top = this.grid[row][col][0];
-            const right = this.grid[row][col][1];
-            const bottom = this.grid[row][col][2];
-            const left = this.grid[row][col][3];
-            let sprite = 14;
-
-            if (this.grid[row][col].length === 4) {
-              if (!top && right && !bottom && !left) {
-                sprite = 0;
-              } else if (!top && right && !bottom && left) {
-                sprite = 1;
-              } else if (!top && !right && !bottom && left) {
-                sprite = 2;
-              } else if (!top && !right && bottom && !left) {
-                sprite = 3;
-              } else if (top && !right && bottom && !left) {
-                sprite = 4;
-              } else if (top && !right && !bottom && !left) {
-                sprite = 5;
-              } else if (top && right && !bottom && left) {
-                sprite = 6;
-              } else if (top && right && bottom && !left) {
-                sprite = 7;
-              } else if (!top && right && bottom && left) {
-                sprite = 8;
-              } else if (top && !right && bottom && left) {
-                sprite = 9;
-              } else if (!top && right && bottom && !left) {
-                sprite = 10;
-              } else if (top && !right && !bottom && left) {
-                sprite = 11;
-              } else if (top && right && !bottom && !left) {
-                sprite = 12;
-              } else if (!top && !right && bottom && left) {
-                sprite = 13;
-              } else if (!top && !right && !bottom && !left) {
-                sprite = 14;
-              }
-            }
-
-            const color = (this.grid[row][col].flat().filter(Boolean)[0] ?? 8) - 1;
-
+            const frame = this.getGridBlockColorFrame(row, col);
             const block = this.add
               .sprite(
                 col * UNIT * BLOCK_SCALE + this.playAreaX,
                 row * UNIT * BLOCK_SCALE + this.playAreaY,
                 "tiles",
-                sprite + 15 * color,
+                frame,
               )
               .setOrigin(0, 0);
             // .setScale(BLOCK_SCALE);
