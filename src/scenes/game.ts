@@ -629,53 +629,6 @@ export class MainGame extends Scene {
     return collision;
   }
 
-  getGridBlockColorFrame(row: number, col: number) {
-    const top = this.grid[row][col][0];
-    const right = this.grid[row][col][1];
-    const bottom = this.grid[row][col][2];
-    const left = this.grid[row][col][3];
-    let sprite = 14;
-
-    if (this.grid[row][col].length === 4) {
-      if (!top && right && !bottom && !left) {
-        sprite = 0;
-      } else if (!top && right && !bottom && left) {
-        sprite = 1;
-      } else if (!top && !right && !bottom && left) {
-        sprite = 2;
-      } else if (!top && !right && bottom && !left) {
-        sprite = 3;
-      } else if (top && !right && bottom && !left) {
-        sprite = 4;
-      } else if (top && !right && !bottom && !left) {
-        sprite = 5;
-      } else if (top && right && !bottom && left) {
-        sprite = 6;
-      } else if (top && right && bottom && !left) {
-        sprite = 7;
-      } else if (!top && right && bottom && left) {
-        sprite = 8;
-      } else if (top && !right && bottom && left) {
-        sprite = 9;
-      } else if (!top && right && bottom && !left) {
-        sprite = 10;
-      } else if (top && !right && !bottom && left) {
-        sprite = 11;
-      } else if (top && right && !bottom && !left) {
-        sprite = 12;
-      } else if (!top && !right && bottom && left) {
-        sprite = 13;
-      } else if (!top && !right && !bottom && !left) {
-        sprite = 14;
-      }
-
-      const color = (this.grid[row][col].flat().filter(Boolean)[0] ?? 8) - 1;
-      const frame = sprite + 15 * color;
-      return frame;
-    }
-    return 14;
-  }
-
   renderGridBlocks() {
     this.gridBlocks.forEach((block) => block.destroy());
 
@@ -683,13 +636,55 @@ export class MainGame extends Scene {
       for (let col = 0; col < this.grid[row].length; col++) {
         if (this.grid[row][col] !== 0) {
           if (Array.isArray(this.grid[row][col])) {
-            const frame = this.getGridBlockColorFrame(row, col);
+            //
+            const top = this.grid[row][col][0];
+            const right = this.grid[row][col][1];
+            const bottom = this.grid[row][col][2];
+            const left = this.grid[row][col][3];
+            let sprite = 14;
+
+            if (this.grid[row][col].length === 4) {
+              if (!top && right && !bottom && !left) {
+                sprite = 0;
+              } else if (!top && right && !bottom && left) {
+                sprite = 1;
+              } else if (!top && !right && !bottom && left) {
+                sprite = 2;
+              } else if (!top && !right && bottom && !left) {
+                sprite = 3;
+              } else if (top && !right && bottom && !left) {
+                sprite = 4;
+              } else if (top && !right && !bottom && !left) {
+                sprite = 5;
+              } else if (top && right && !bottom && left) {
+                sprite = 6;
+              } else if (top && right && bottom && !left) {
+                sprite = 7;
+              } else if (!top && right && bottom && left) {
+                sprite = 8;
+              } else if (top && !right && bottom && left) {
+                sprite = 9;
+              } else if (!top && right && bottom && !left) {
+                sprite = 10;
+              } else if (top && !right && !bottom && left) {
+                sprite = 11;
+              } else if (top && right && !bottom && !left) {
+                sprite = 12;
+              } else if (!top && !right && bottom && left) {
+                sprite = 13;
+              } else if (!top && !right && !bottom && !left) {
+                sprite = 14;
+              }
+            }
+
+            const color = (this.grid[row][col].flat().filter(Boolean)[0] ?? 8) - 1;
+
             const block = this.add
               .sprite(
                 col * UNIT * BLOCK_SCALE + this.playAreaX,
                 row * UNIT * BLOCK_SCALE + this.playAreaY,
                 "tiles",
-                frame,
+                sprite + 15 * color,
               )
               .setOrigin(0, 0);
             // .setScale(BLOCK_SCALE);
