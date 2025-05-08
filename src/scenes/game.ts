@@ -104,7 +104,6 @@ export class MainGame extends Scene {
 
     this.cursors = this.input.keyboard?.createCursorKeys();
     this.zKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
-    // this.spaceKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
 
     this.input?.keyboard?.on("keydown-SPACE", () => {
       if (!this.inputLocked && this.playerSprite) {
@@ -407,6 +406,7 @@ export class MainGame extends Scene {
   }
 
   clearCompletedLines(callback?: () => void) {
+    // Count completed lines:
     let lines = 0;
     const deleteRowIndices: number[] = [];
     for (let i = 0; i < ROWS; i++) {
@@ -424,6 +424,7 @@ export class MainGame extends Scene {
 
     this.updateScore(lines);
 
+    // update the grid rows above and below the cleared rows
     deleteRowIndices.forEach((row) => {
       for (let i = 0; i < COLUMNS; i++) {
         // update the row above the cleared row to make all blocks to not have bottom connection
@@ -450,18 +451,20 @@ export class MainGame extends Scene {
       }
     });
 
+    // Clear the completed lines from the grid
     deleteRowIndices.forEach((row) => {
       this.grid[row] = Array(COLUMNS).fill(0);
     });
     this.renderGridBlocks();
     this.playerSprite?.destroy();
     this.playerSprite = null;
+
     // Animate each cleared line
     deleteRowIndices.forEach((row) => {
       this.animateLineClear(row);
     });
 
-    this.pauseGame = true;
+    this.inputLocked = true;
 
     // if there are lines to clear, we pause for longer to show an animation
     this.time.delayedCall(lines ? 140 : 10, () => {
@@ -471,11 +474,8 @@ export class MainGame extends Scene {
           this.grid.unshift(Array(COLUMNS).fill(0));
         });
 
-        this.playerSprite?.destroy();
-        this.playerSprite = null;
         this.newBlock();
         this.renderGridBlocks();
-        this.pauseGame = false;
         this.inputLocked = false;
         callback?.();
       }
@@ -769,9 +769,7 @@ export class MainGame extends Scene {
         }
 
         // Clear completed lines and spawn a new block
-        this.clearCompletedLines(() => {
-          this.inputLocked = false;
-        });
+        this.clearCompletedLines();
       },
     });
   }
