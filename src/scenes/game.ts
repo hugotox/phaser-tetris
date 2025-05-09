@@ -22,7 +22,7 @@ import { GravityManager } from "../lib/GravityManager";
 
 export class MainGame extends Scene {
   playAreaX = 0; // set in setupWorld
-  playAreaY = 20;
+  playAreaY = 0; // set in setupWorld
   lastUpdateTime = 0;
   gravity: GravityManager | null = null;
   gameSpeed = -1;
@@ -87,6 +87,7 @@ export class MainGame extends Scene {
     this.load.image("btnLeft", "assets/btn-left.png");
     this.load.image("btnRotate", "assets/btn-rotate.png");
     this.load.bitmapFont("arcade", "assets/arcade.png", "assets/arcade.xml");
+    this.load.image("gameFrame", "assets/game-frame.png");
   }
 
   create() {
@@ -123,7 +124,10 @@ export class MainGame extends Scene {
 
   setupWorld() {
     const playAreaWidth = 10 * UNIT * BLOCK_SCALE;
-    this.playAreaX = 20;
+    const paddingX = 20;
+    const paddingY = 20;
+    this.playAreaX = 32 + paddingX;
+    this.playAreaY = 32 + paddingY;
 
     // play area background:
     this.add
@@ -135,27 +139,28 @@ export class MainGame extends Scene {
         0x000000,
       )
       .setOrigin(0, 0);
+    this.add.image(paddingX, paddingY, "gameFrame").setOrigin(0, 0);
 
     // next piece area background
-    this.add
-      .rectangle(
-        this.playAreaX + playAreaWidth + 20,
-        this.playAreaY,
-        150,
-        10 * UNIT * BLOCK_SCALE + UNIT / 2,
-        0x000000,
-      )
-      .setOrigin(0, 0);
+    // this.add
+    //   .rectangle(
+    //     this.playAreaX + playAreaWidth + 20,
+    //     this.playAreaY,
+    //     150,
+    //     10 * UNIT * BLOCK_SCALE + UNIT / 2,
+    //     0x000000,
+    //   )
+    //   .setOrigin(0, 0);
 
     // "Score" text
     this.add
-      .bitmapText(this.playAreaX + playAreaWidth + 40, this.playAreaY + 20, "arcade", "SCORE", 18)
+      .bitmapText(this.playAreaX + playAreaWidth + 40, paddingY, "arcade", "SCORE", 18)
       .setOrigin(0, 0)
       .setTint(0xffe066);
     this.scoreText = this.add
       .bitmapText(
         this.playAreaX + playAreaWidth + 40,
-        this.playAreaY + 45,
+        paddingY + 18,
         "arcade",
         String(this.score),
         18,
@@ -165,7 +170,7 @@ export class MainGame extends Scene {
 
     // "Next" text
     this.add
-      .bitmapText(this.playAreaX + playAreaWidth + 40, this.playAreaY + 80, "arcade", "NEXT", 18)
+      .bitmapText(this.playAreaX + playAreaWidth + 40, paddingY + 80, "arcade", "NEXT", 18)
       .setOrigin(0, 0)
       .setTint(0xffe066);
 
@@ -395,7 +400,7 @@ export class MainGame extends Scene {
           this.playAreaY,
           this.playAreaY + ROWS * UNIT * BLOCK_SCALE - block.displayHeight * 1.5,
         ), // Clamp Y to stay within the play area
-        duration: 10, // Animation duration in milliseconds
+        duration: 100, // Animation duration in milliseconds
         delay: col * 10,
         ease: "Cubic.easeOut",
         onComplete: () => {
@@ -467,7 +472,7 @@ export class MainGame extends Scene {
     this.inputLocked = true;
 
     // if there are lines to clear, we pause for longer to show an animation
-    this.time.delayedCall(lines ? 140 : 10, () => {
+    this.time.delayedCall(lines ? 200 : 10, () => {
       if (!this.gameOver) {
         deleteRowIndices.forEach((row) => {
           this.grid.splice(row, 1);
