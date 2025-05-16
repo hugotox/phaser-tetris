@@ -4,6 +4,8 @@ import {
   BlockTypes,
   BlockTypesType,
   COLUMNS,
+  GAME_WIDTH,
+  GAME_HEIGHT,
   I_KICK_TABLE,
   JLSTZ_KICK_TABLE,
   KickTableKey,
@@ -16,7 +18,7 @@ import {
   UNIT,
 } from "../constants";
 import { PieceGenerator } from "../lib/PieceGenerator";
-import tetrisMusic from "../lib/tetris-theme.mp3";
+import tetrisMusic from "../lib/tetris.mp3";
 import { getNextRotation, rotateMatrix } from "../lib/utils";
 import { GravityManager } from "../lib/GravityManager";
 
@@ -72,6 +74,10 @@ export class MainGame extends Scene {
   dragStartY: number | null = null;
   dragAccumY = 0;
 
+  pauseButton: Phaser.GameObjects.Image | null = null;
+  pauseOverlay: Phaser.GameObjects.Rectangle | null = null;
+  pauseText: Phaser.GameObjects.BitmapText | null = null;
+
   constructor() {
     super("Game");
   }
@@ -88,6 +94,7 @@ export class MainGame extends Scene {
     this.load.image("btnRotate", "assets/btn-rotate.png");
     this.load.bitmapFont("arcade", "assets/arcade.png", "assets/arcade.xml");
     this.load.image("gameFrame", "assets/game-frame.png");
+    this.load.image("btnPause", "assets/btnPause.png");
   }
 
   create() {
@@ -98,7 +105,7 @@ export class MainGame extends Scene {
     this.gameSpeed = this.gravity.currentSpeed;
 
     this.setupWorld();
-    this.setupMusic();
+    // this.setupMusic();
     if (!this.sys.game.device.os.desktop) {
       this.createTouchButtons();
     }
@@ -112,14 +119,42 @@ export class MainGame extends Scene {
       }
     });
 
+    this.pauseButton = this.add
+      .image(GAME_WIDTH - 80, GAME_HEIGHT - 500, "btnPause")
+      .setOrigin(0.5)
+      .setInteractive();
+    this.pauseButton.setScale(0.7);
+    this.pauseButton.on("pointerdown", () => this.togglePause());
+    // Keyboard pause (P)
+    this.input.keyboard?.on("keydown-P", () => this.togglePause());
+
     this.nextPieces.push(this.pieceGenerator.generatePiece());
     this.newBlock();
+  }
+
+  togglePause() {
+    this.pauseGame = !this.pauseGame;
+    if (this.pauseGame) {
+      // Show overlay
+      this.pauseOverlay = this.add
+        .rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.6)
+        .setDepth(100);
+      this.pauseText = this.add
+        .bitmapText(GAME_WIDTH / 2 - 40, GAME_HEIGHT / 2, "arcade", "PAUSED", 48)
+        .setOrigin(0.5)
+        .setTint(0xffe066)
+        .setDepth(101);
+    } else {
+      // Remove overlay
+      this.pauseOverlay?.destroy();
+      this.pauseText?.destroy();
+    }
   }
 
   setupMusic() {
     this.bgMusic = this.sound.add("tetrisMusic");
     this.bgMusic.loop = true;
-    // this.bgMusic.play();
+    this.bgMusic.play();
   }
 
   setupWorld() {

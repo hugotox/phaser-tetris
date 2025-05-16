@@ -1,5 +1,6 @@
 import { GAME_HEIGHT, GAME_WIDTH } from "./constants";
 import { MainGame } from "./scenes/game";
+import { StartScene } from "./scenes/start";
 import { AUTO, Game, Scale, Types } from "phaser";
 
 //  Find out more information about the Game Config at:
@@ -15,7 +16,7 @@ const config: Types.Core.GameConfig = {
     autoCenter: Scale.CENTER_BOTH,
   },
   antialias: true,
-  scene: [MainGame],
+  scene: [StartScene, MainGame],
 };
 
 export default new Game(config);
