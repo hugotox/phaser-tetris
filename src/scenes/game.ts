@@ -19,6 +19,9 @@ import {
 } from "../constants";
 import { PieceGenerator } from "../lib/PieceGenerator";
 import tetrisMusic from "../lib/tetris.mp3";
+import lineClearFx from "../lib/line-clear.mp3";
+import gameOverFx from "../lib/game-over.mp3";
+import pieceLockFx from "../lib/piece-lock.mp3";
 import { getNextRotation, rotateMatrix } from "../lib/utils";
 import { GravityManager } from "../lib/GravityManager";
 
@@ -38,6 +41,18 @@ export class MainGame extends Scene {
   keyPressTime = 0;
   lastMoveTime = 0;
   bgMusic: Phaser.Sound.NoAudioSound | Phaser.Sound.HTML5AudioSound | Phaser.Sound.WebAudioSound;
+  lineClearSound:
+    | Phaser.Sound.NoAudioSound
+    | Phaser.Sound.HTML5AudioSound
+    | Phaser.Sound.WebAudioSound;
+  gameOverSound:
+    | Phaser.Sound.NoAudioSound
+    | Phaser.Sound.HTML5AudioSound
+    | Phaser.Sound.WebAudioSound;
+  pieceLockSound:
+    | Phaser.Sound.NoAudioSound
+    | Phaser.Sound.HTML5AudioSound
+    | Phaser.Sound.WebAudioSound;
 
   cursors: Phaser.Types.Input.Keyboard.CursorKeys | undefined;
   zKey: Phaser.Input.Keyboard.Key | undefined;
@@ -91,6 +106,9 @@ export class MainGame extends Scene {
       frameHeight: 32,
     });
     this.load.audio("tetrisMusic", tetrisMusic);
+    this.load.audio("lineClearFx", lineClearFx);
+    this.load.audio("gameOverFx", gameOverFx);
+    this.load.audio("pieceLockFx", pieceLockFx);
     this.load.image("background", "assets/background.png");
     this.load.bitmapFont("arcade", "assets/arcade.png", "assets/arcade.xml");
     this.load.image("gameFrame", "assets/game-frame.png");
@@ -105,7 +123,7 @@ export class MainGame extends Scene {
     this.gameSpeed = this.gravity.currentSpeed;
 
     this.setupWorld();
-    // this.setupMusic();
+    this.setupMusic();
     if (!this.sys.game.device.os.desktop) {
       this.createTouchButtons();
     }
@@ -152,9 +170,12 @@ export class MainGame extends Scene {
   }
 
   setupMusic() {
-    this.bgMusic = this.sound.add("tetrisMusic");
-    this.bgMusic.loop = true;
-    this.bgMusic.play();
+    // this.bgMusic = this.sound.add("tetrisMusic");
+    // this.bgMusic.loop = true;
+    // this.bgMusic.play();
+    this.lineClearSound = this.sound.add("lineClearFx");
+    this.gameOverSound = this.sound.add("gameOverFx");
+    this.pieceLockSound = this.sound.add("pieceLockFx");
   }
 
   setupWorld() {
@@ -583,6 +604,10 @@ export class MainGame extends Scene {
         this.renderGridBlocks();
         this.inputLocked = false;
         callback?.();
+
+        if (lines) {
+          this.lineClearSound.play();
+        }
       }
     });
 
@@ -869,6 +894,8 @@ export class MainGame extends Scene {
           this.playerRow += 1;
           this.renderPlayerSprite();
           this.gameOver = true;
+        } else {
+          this.pieceLockSound.play();
         }
 
         // Clear completed lines and spawn a new block
@@ -883,6 +910,9 @@ export class MainGame extends Scene {
     if (!added) {
       this.renderPlayerSprite();
       this.gameOver = true;
+      this.gameOverSound.play();
+    } else {
+      this.pieceLockSound.play();
     }
     this.clearCompletedLines(() => {
       this.downKeyReleased = false;
