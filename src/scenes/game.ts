@@ -90,8 +90,6 @@ export class MainGame extends Scene {
     });
     this.load.audio("tetrisMusic", tetrisMusic);
     this.load.image("background", "assets/background.png");
-    this.load.image("btnLeft", "assets/btn-left.png");
-    this.load.image("btnRotate", "assets/btn-rotate.png");
     this.load.bitmapFont("arcade", "assets/arcade.png", "assets/arcade.xml");
     this.load.image("gameFrame", "assets/game-frame.png");
     this.load.image("btnPause", "assets/btnPause.png");
