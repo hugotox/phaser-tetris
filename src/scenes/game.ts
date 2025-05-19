@@ -78,6 +78,8 @@ export class MainGame extends Scene {
   pauseOverlay: Phaser.GameObjects.Rectangle | null = null;
   pauseText: Phaser.GameObjects.BitmapText | null = null;
 
+  ghostSprite: Phaser.GameObjects.Sprite | null = null;
+
   constructor() {
     super("Game");
   }
@@ -361,6 +363,70 @@ export class MainGame extends Scene {
     return false;
   }
 
+  // Calculate the landing row for the ghost piece
+  getGhostPosition() {
+    if (!this.playerMatrix) return { row: this.playerRow, col: this.playerCol };
+    let testRow = this.playerRow;
+    while (true) {
+      testRow++;
+      if (!this.canPlacePieceAt(this.playerCol, testRow)) {
+        return { row: testRow - 1, col: this.playerCol };
+      }
+    }
+  }
+
+  renderGhostPiece() {
+    if (!this.playerMatrix || this.playerType == null) return;
+    const { row, col } = this.getGhostPosition();
+    console.log("ghost", { row, col });
+    // Use the same offset logic as playerSprite for correct alignment
+    let ghostX = col;
+    let ghostY = row;
+    if (this.playerType === "I") {
+      if (this.playerRotation === "0") {
+        ghostY += 1;
+      } else if (this.playerRotation === "R") {
+        ghostX += 2;
+      } else if (this.playerRotation === "2") {
+        ghostY += 2;
+      } else if (this.playerRotation === "L") {
+        ghostX += 1;
+      }
+    } else if (
+      this.playerType === "J" ||
+      this.playerType === "L" ||
+      this.playerType === "T" ||
+      this.playerType === "S" ||
+      this.playerType === "Z"
+    ) {
+      if (this.playerRotation === "R") {
+        ghostX += 1;
+      } else if (this.playerRotation === "2") {
+        ghostY += 1;
+      }
+    }
+    const spriteKey = `${this.playerType}-${this.playerRotation}`;
+    const x = this.playAreaX + ghostX * UNIT * BLOCK_SCALE;
+    const y = this.playAreaY + ghostY * UNIT * BLOCK_SCALE;
+    if (!this.ghostSprite) {
+      this.ghostSprite = this.add.sprite(x, y, "tetrominos", spriteKey).setOrigin(0, 0);
+      this.ghostSprite.setAlpha(0.3);
+      this.ghostSprite.setDepth(1);
+    } else {
+      this.ghostSprite.setTexture("tetrominos", spriteKey);
+      this.ghostSprite.setPosition(x, y);
+      this.ghostSprite.setAlpha(0.3);
+      this.ghostSprite.setDepth(1);
+      this.ghostSprite.setVisible(true);
+    }
+  }
+
+  hideGhostPiece() {
+    if (this.ghostSprite) {
+      this.ghostSprite.setVisible(false);
+    }
+  }
+
   addPlayerToGrid() {
     if (!this.playerMatrix) {
       return;
@@ -381,6 +447,7 @@ export class MainGame extends Scene {
         }
       }
     }
+    this.hideGhostPiece();
     return true;
   }
 
@@ -542,6 +609,7 @@ export class MainGame extends Scene {
       collision = true;
     }
     this.renderPlayerSprite();
+    this.renderGhostPiece();
     if (collision) {
       this.lockPiece();
     }
@@ -593,6 +661,8 @@ export class MainGame extends Scene {
       this.playerSprite.setX(newX * UNIT * BLOCK_SCALE + this.playAreaX);
       this.playerSprite.setY(newY * UNIT * BLOCK_SCALE + this.playAreaY);
     }
+
+    this.renderGhostPiece();
   }
 
   canPlacePieceAt(x: number, y: number) {
