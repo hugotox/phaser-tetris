@@ -432,12 +432,10 @@ export class MainGame extends Scene {
     if (!this.ghostSprite) {
       this.ghostSprite = this.add.sprite(x, y, "tetrominos", spriteKey).setOrigin(0, 0);
       this.ghostSprite.setAlpha(0.3);
-      this.ghostSprite.setDepth(1);
     } else {
       this.ghostSprite.setTexture("tetrominos", spriteKey);
       this.ghostSprite.setPosition(x, y);
       this.ghostSprite.setAlpha(0.3);
-      this.ghostSprite.setDepth(1);
       this.ghostSprite.setVisible(true);
     }
   }
@@ -679,12 +677,14 @@ export class MainGame extends Scene {
           "tetrominos",
           sprite,
         )
-        .setOrigin(0, 0);
+        .setOrigin(0, 0)
+        .setDepth(1);
       // .setScale(BLOCK_SCALE);
     } else {
       this.playerSprite.setFrame(sprite);
       this.playerSprite.setX(newX * UNIT * BLOCK_SCALE + this.playAreaX);
       this.playerSprite.setY(newY * UNIT * BLOCK_SCALE + this.playAreaY);
+      this.playerSprite.setDepth(1);
     }
 
     this.renderGhostPiece();
