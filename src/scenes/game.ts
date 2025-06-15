@@ -132,7 +132,7 @@ export class MainGame extends Scene {
     this.zKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
 
     this.input?.keyboard?.on("keydown-SPACE", () => {
-      if (!this.inputLocked && this.playerSprite) {
+      if (!this.inputLocked && !this.pauseGame && this.playerSprite) {
         this.handleHardDrop();
       }
     });
